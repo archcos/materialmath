@@ -136,16 +136,27 @@ h2 { font-size: 1.5rem; line-height: 1.25; margin: 2.2rem 0 .6rem; }
 .unit, .unit-in { padding: 0 10px; color: var(--muted); font-size: .9rem; white-space: nowrap; }
 .unit:empty { display: none; }
 .inp input.in-box { border-left: 2px solid var(--line); }
-.metric .in-box { display: none; }
+.inp:not(.ftin) .in-box { display: none; } /* the inches box only shows when the unit is feet */
+.inp .unit-sel { flex: none; border: 0; background: none; color: var(--muted); font: inherit; font-size: .9rem; font-weight: 500; padding: 0 4px 0 6px; cursor: pointer; }
+.inp .unit-sel:hover { color: var(--accent); }
+.inp .unit-sel:focus-visible { outline: 2px solid var(--hot); outline-offset: -2px; border-radius: 4px; }
+.inp .unit-sel option { color: var(--fg); background: var(--surface); }
 .help { margin: 4px 0 0; font-size: .82rem; line-height: 1.4; color: var(--muted); }
 .res-title { font: 700 1.05rem var(--head); margin: 24px 0 8px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
 .headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; background: var(--steel); color: var(--on-steel); border-left: 6px solid var(--hot); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; font-weight: 600; }
 .headline:empty { display: none; }
 .headline .big { font: 700 2.6rem/1 var(--head); color: var(--hot); font-variant-numeric: tabular-nums; }
 .cost-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
-.cur { font-size: .88rem; color: var(--muted); }
-.cur select { margin-left: 4px; max-width: 13rem; font: inherit; color: var(--fg); background: var(--bg); border: 2px solid var(--line); border-radius: var(--radius); padding: 3px 6px; }
-.cur select:focus { border-color: var(--hot); outline: none; }
+.cur { display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); }
+.cur-box { position: relative; }
+.cur input { width: 15.5rem; max-width: 62vw; font: inherit; color: var(--fg); border: 2px solid var(--line); border-radius: var(--radius); padding: 4px 28px 4px 8px; cursor: pointer;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 9px center / 11px; }
+.cur input:focus { border-color: var(--hot); outline: none; cursor: text; }
+.cur-opts { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; width: max(100%, 17rem); max-width: 86vw; max-height: 260px; overflow-y: auto; margin: 0; padding: 4px; list-style: none;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 12px 28px rgba(0, 0, 0, .28); }
+.cur-opts li { padding: 7px 10px; border-radius: 4px; color: var(--fg); font-size: .9rem; cursor: pointer; }
+.cur-opts li[aria-selected="true"], .cur-opts li[data-cur]:hover { background: var(--accent-soft); color: var(--accent); }
+.cur-opts .none { color: var(--muted); cursor: default; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .btn { font: 700 .95rem var(--head); text-transform: uppercase; letter-spacing: .05em; padding: 8px 16px; border-radius: var(--radius); border: 2px solid var(--hot); background: var(--hot); color: #1a0d05; cursor: pointer; }
 .btn:hover { background: var(--hazard); border-color: var(--hazard); }

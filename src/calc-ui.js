@@ -12,8 +12,17 @@
   const fromBase = (k, b) => (U[k] ? b / U[k][i()][1] : k === 'pct' ? b * 100 : b);
   const round = x => Math.round(x * 1000) / 1000; // 3 decimals keeps ⅛ in (0.125) exact
   const num = s => (s.trim() === '' ? NaN : Number(s));
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const f = id => document.getElementById('f-' + id);
-  const ftIn = k => k === 'len' && sys === 'imp'; // feet fields get a second box for inches
+  // Units each measurement box can be typed in, per system: [label, metres per unit, has a second box for inches].
+  // Each box only offers its system's units (never mixed); the first one is the usual unit.
+  const INPUT_UNITS = {
+    len: { imp: [['ft', FT, true], ['in', IN], ['yd', 3 * FT]], met: [['m', 1], ['cm', 0.01], ['mm', 0.001]] },
+    small: { imp: [['in', IN], ['ft', FT]], met: [['cm', 0.01], ['mm', 0.001], ['m', 1]] },
+  };
+  const fu = {}; // unit picked per box; missing = the system's usual unit
+  const opt = (id, k) => INPUT_UNITS[k] && (INPUT_UNITS[k][sys].find(u => u[0] === fu[id]) || INPUT_UNITS[k][sys][0]);
+  const ftIn = (id, k) => !!(opt(id, k) || [])[2]; // feet boxes get a second box for inches
 
   // The "?" shows the tip on hover, tap or keyboard focus; the input is also described by it for screen readers.
   const field = ([id, label, kind, def, opts]) => `<div class="field"><div class="lab"><label for="f-${id}">${label}</label>${
@@ -22,7 +31,9 @@
     kind === 'select'
       ? `<select id="f-${id}" aria-describedby="t-${id}">${opts.map((o, n) => `<option value="${o[1]}"${n === def ? ' selected' : ''}>${o[0]}</option>`).join('')}</select>`
       : `<input id="f-${id}" type="number" inputmode="decimal" min="0" step="any" aria-describedby="t-${id}">`
-  }<span class="unit" data-kind="${kind}"></span>${
+  }${INPUT_UNITS[kind]
+    ? `<select class="unit-sel" data-id="${id}" aria-label="Unit for ${label}"></select>` // options filled per system in paintUnits()
+    : `<span class="unit" data-kind="${kind}"></span>`}${
     kind === 'len' ? `<input id="f-${id}-in" class="in-box" type="number" inputmode="decimal" min="0" step="any" placeholder="0" aria-label="${label}, inches"><span class="unit-in in-box">in</span>` : ''
   }</div>${hints[id] ? `<p class="help">${hints[id]}</p>` : ''}</div>`;
 
@@ -33,7 +44,9 @@
     <div class="headline" aria-live="polite"></div>
     <div class="results"></div>
     ${C.prices ? `<div class="cost"><div class="cost-head"><h2 class="res-title">Cost estimate</h2>
-    <label class="cur">Currency <select>${MMLocale.currencies.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c} · ${MMLocale.name(c)}</option>`).join('')}</select></label></div>
+    <div class="cur"><label for="cur-in">Currency</label><div class="cur-box">
+      <input id="cur-in" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cur-opts" autocomplete="off" spellcheck="false" placeholder="Search: peso, yen, GBP…">
+      <ul id="cur-opts" class="cur-opts" role="listbox" aria-label="Currencies" hidden></ul></div></div></div>
     <table class="costs"></table>
     <p class="total" aria-live="polite"></p>
     <p class="help cost-help"></p></div>` : ''}
@@ -77,13 +90,57 @@
   // Default prices are US store prices, so they only fill in for US dollars; other currencies start blank.
   const money = x => MMLocale.money(x, cur);
   const priceKey = l => `mm-price:${C.slug}:${cur}:${sys}:${l}`;
-  const curSelect = el.querySelector('.cur select');
-  if (curSelect) curSelect.addEventListener('change', () => {
-    cur = curSelect.value;
-    MMLocale.setCurrency(cur);
-    buildCosts();
-    update();
-  });
+  // Searchable currency dropdown (our own list, because the browser's <datalist> doesn't open in every browser).
+  // Click or tap shows every currency; typing filters by code, name or symbol; arrows + Enter or a click picks one.
+  const curBox = el.querySelector('#cur-in'), curList = el.querySelector('#cur-opts');
+  if (curBox) {
+    let matches = [], active = -1;
+    const paintActive = () => curList.querySelectorAll('[data-cur]').forEach((li, n) => {
+      li.setAttribute('aria-selected', n === active);
+      if (n === active) { curBox.setAttribute('aria-activedescendant', li.id); li.scrollIntoView({ block: 'nearest' }); }
+    });
+    const showCur = () => {
+      const t = curBox.value.trim().toLowerCase(), all = !t || curBox.value === MMLocale.label(cur);
+      matches = MMLocale.currencies.filter(c => all || MMLocale.label(c).toLowerCase().includes(t));
+      active = all ? matches.indexOf(cur) : matches.length ? 0 : -1;
+      curList.innerHTML = matches.map(c => `<li role="option" id="co-${c}" data-cur="${c}">${esc(MMLocale.label(c))}</li>`).join('')
+        || '<li class="none">No currency found</li>';
+      curList.hidden = false;
+      curBox.setAttribute('aria-expanded', 'true');
+      paintActive();
+    };
+    const hideCur = () => {
+      curList.hidden = true;
+      curBox.setAttribute('aria-expanded', 'false');
+      curBox.removeAttribute('aria-activedescendant');
+      curBox.value = MMLocale.label(cur); // an unfinished search snaps back to the current currency
+    };
+    const pickCur = c => {
+      if (c && c !== cur) { cur = c; MMLocale.setCurrency(c); buildCosts(); update(); }
+      hideCur();
+    };
+    curBox.value = MMLocale.label(cur);
+    curBox.addEventListener('focus', () => { curBox.select(); showCur(); }); // typing replaces the old choice
+    curBox.addEventListener('click', () => { if (curList.hidden) showCur(); });
+    curBox.addEventListener('input', showCur);
+    curBox.addEventListener('blur', hideCur);
+    curBox.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (curList.hidden) showCur();
+        if (matches.length) { active = (active + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length; paintActive(); }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        pickCur(matches[active] || MMLocale.parse(curBox.value));
+      } else if (e.key === 'Escape') hideCur();
+    });
+    // mousedown (not click) with preventDefault keeps focus in the box, so blur doesn't close the list before the pick
+    curList.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const li = e.target.closest('[data-cur]');
+      if (li) pickCur(li.dataset.cur);
+    });
+  }
   let priced = []; // [label, kind, per-text] for the current unit system
 
   function buildCosts() {
@@ -125,13 +182,13 @@
   // Value of a field in base units, or NaN if it is empty or invalid.
   function read(id, k) {
     if (k === 'select') return Number(f(id).value);
-    const x = num(f(id).value);
-    if (ftIn(k)) {
+    const x = num(f(id).value), o = opt(id, k);
+    if (ftIn(id, k)) {
       const inch = num(f(id + '-in').value);
       if ((isNaN(x) && isNaN(inch)) || x < 0 || inch < 0) return NaN;
       return (x || 0) * FT + (inch || 0) * IN;
     }
-    return U[k] ? x * U[k][i()][1] : k === 'pct' ? x / 100 : x;
+    return o ? x * o[1] : U[k] ? x * U[k][i()][1] : k === 'pct' ? x / 100 : x;
   }
 
   // Remember the exact value behind each rounded number we display, so flipping units back and forth doesn't drift.
@@ -139,20 +196,22 @@
   const snap = id => f(id).value + '|' + (f(id + '-in') ? f(id + '-in').value : '');
   function write(id, k, b) {
     if (!isFinite(b)) return;
-    if (ftIn(k)) {
+    const o = opt(id, k);
+    if (ftIn(id, k)) {
       let ft = Math.floor(b / FT + 1e-9), inch = round((b / FT - ft) * 12);
       if (inch >= 12) { ft += 1; inch = 0; }
       f(id).value = ft;
       f(id + '-in').value = inch || '';
-    } else f(id).value = round(fromBase(k, b));
+    } else f(id).value = round(o ? b / o[1] : fromBase(k, b));
     written[id] = { b, shown: snap(id) };
   }
 
   // Field value as text for the copied summary.
   function shown(id, k) {
     if (k === 'select') return f(id).selectedOptions[0].text;
-    if (ftIn(k)) return `${f(id).value || 0} ft` + (f(id + '-in').value ? ` ${f(id + '-in').value} in` : '');
-    return `${f(id).value}${unit(k) ? ' ' + unit(k) : ''}`;
+    if (ftIn(id, k)) return `${f(id).value || 0} ft` + (f(id + '-in').value ? ` ${f(id + '-in').value} in` : '');
+    const u = opt(id, k) ? opt(id, k)[0] : unit(k);
+    return `${f(id).value}${u ? ' ' + u : ''}`;
   }
 
   function fmt(b, k) {
@@ -185,6 +244,12 @@
   function paintUnits() {
     el.classList.toggle('metric', sys === 'met');
     el.querySelectorAll('.unit').forEach(s => (s.textContent = unit(s.dataset.kind)));
+    for (const [id, , k] of C.inputs) if (INPUT_UNITS[k]) {
+      const s = el.querySelector(`.unit-sel[data-id="${id}"]`);
+      s.innerHTML = INPUT_UNITS[k][sys].map(([u]) => `<option>${u}</option>`).join('');
+      s.value = opt(id, k)[0];
+      f(id).closest('.inp').classList.toggle('ftin', ftIn(id, k));
+    }
     el.querySelectorAll('[data-sys]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sys === sys));
     buildCosts();
   }
@@ -194,6 +259,7 @@
     const base = {};
     for (const [id, , k] of C.inputs) base[id] = written[id] && written[id].shown === snap(id) ? written[id].b : read(id, k);
     sys = b.dataset.sys;
+    for (const id in fu) delete fu[id]; // every box goes back to the new system's usual unit
     try { localStorage.setItem('mm-sys', sys); } catch (e) {}
     for (const [id, , k] of C.inputs) if (k !== 'select') write(id, k, base[id]);
     paintUnits();
@@ -213,6 +279,17 @@
   el.addEventListener('input', e => {
     const item = e.target.dataset.item;
     if (item) try { localStorage.setItem(priceKey(item), e.target.value); } catch (err) {}
+    update();
+  });
+  // Changing one box's unit converts the number already in it (4 in -> 101.6 mm) instead of reinterpreting it.
+  el.addEventListener('change', e => {
+    const s = e.target.closest('.unit-sel');
+    if (!s) return;
+    const id = s.dataset.id, k = C.inputs.find(x => x[0] === id)[2];
+    const base = written[id] && written[id].shown === snap(id) ? written[id].b : read(id, k); // read with the old unit
+    fu[id] = s.value;
+    if (isFinite(base)) write(id, k, base);
+    paintUnits();
     update();
   });
   el.addEventListener('keydown', e => { if (e.key === 'Escape' && e.target.classList.contains('tip')) e.target.blur(); });

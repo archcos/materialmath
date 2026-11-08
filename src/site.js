@@ -14,15 +14,29 @@ window.MMLocale = (function () {
   const tag = (navigator.languages && navigator.languages[0]) || navigator.language || 'en-US';
   let region = '';
   try { region = new Intl.Locale(tag).region || ''; } catch (e) {}
-  const EURO = 'AT BE CY DE EE ES FI FR GR HR IE IT LT LU LV MT NL PT SI SK'.split(' ');
-  const BY_REGION = { US: 'USD', CA: 'CAD', GB: 'GBP', AU: 'AUD', NZ: 'NZD', IN: 'INR', PH: 'PHP', ZA: 'ZAR', SG: 'SGD' };
+  const EURO = 'AT BE BG CY DE EE ES FI FR GR HR IE IT LT LU LV MT NL PT SI SK'.split(' ');
+  // Country -> currency for the bigger markets; anywhere else falls back to USD, but without US prices (see usPrices).
+  const BY_REGION = Object.fromEntries(('US USD,CA CAD,GB GBP,AU AUD,NZ NZD,IN INR,PH PHP,ZA ZAR,SG SGD,JP JPY,CN CNY,HK HKD,TW TWD,'
+    + 'KR KRW,MX MXN,BR BRL,AR ARS,CL CLP,CO COP,PE PEN,CH CHF,SE SEK,NO NOK,DK DKK,PL PLN,CZ CZK,HU HUF,RO RON,TR TRY,IL ILS,'
+    + 'AE AED,SA SAR,QA QAR,KW KWD,EG EGP,NG NGN,KE KES,GH GHS,MA MAD,PK PKR,BD BDT,LK LKR,ID IDR,MY MYR,TH THB,VN VND,UA UAH,'
+    + 'RU RUB,IS ISK,JM JMD,TT TTD,DO DOP,CR CRC,GT GTQ,UY UYU').split(',').map(p => p.split(' ')));
   const guess = BY_REGION[region] || (EURO.includes(region) ? 'EUR' : 'USD');
+  // Currencies in use today (ISO 4217), for the picker.
+  const ALL = ('USD EUR GBP CAD AUD NZD AED AFN ALL AMD AOA ARS AWG AZN BAM BBD BDT BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD CDF '
+    + 'CHF CLP CNY COP CRC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB FJD FKP GEL GHS GIP GMD GNF GTQ GYD HKD HNL HTG HUF IDR ILS INR '
+    + 'IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR '
+    + 'MWK MXN MYR MZN NAD NGN NIO NOK NPR OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SOS '
+    + 'SRD SSP STN SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX UYU UZS VES VND VUV WST XAF XCD XCG XOF XPF YER ZAR ZMW ZWG').split(' ');
   const read = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const fmt = cur => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur });
   let names = null;
   try { names = new Intl.DisplayNames(['en'], { type: 'currency' }); } catch (e) {}
   return {
-    currencies: ['USD', 'CAD', 'GBP', 'EUR', 'AUD', 'NZD', 'INR', 'PHP', 'ZAR', 'SGD'],
+    currencies: ALL,
+    // Picker text, e.g. "GBP · British Pound (£)"; typing any part of it finds the currency.
+    label(cur) { const s = this.symbol(cur); return `${cur} · ${this.name(cur)}${s !== cur ? ` (${s})` : ''}`; },
+    // Reads a currency code back from what was typed or picked ("gbp", "GBP · British Pound"); null if unknown.
+    parse: text => { const c = String(text).trim().slice(0, 3).toUpperCase(); return ALL.includes(c) ? c : null; },
     currency: () => read('mm-cur') || guess,
     // The default prices are US store prices: pre-fill them only for US visitors, or anyone who picked US dollars,
     // not for regions that merely fall back to USD (in Mexico "$" means pesos).

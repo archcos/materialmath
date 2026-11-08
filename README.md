@@ -9,10 +9,14 @@ node serve.js    # preview at http://localhost:8080
 node og.js       # remake the share images in src/og/ (uses your installed Edge or Chrome)
 ```
 
-## Before you publish
-1. Open `build.js` and edit the `SITE` block: your domain (`url`) and your contact `email`.
-2. Run `node build.js`.
-3. Upload the `dist/` folder to any static host. Cloudflare Pages and Netlify are free: drag and drop `dist/`, then connect your domain.
+## Publishing (GitHub → Cloudflare)
+The site deploys only through GitHub. Every push to `main` makes Cloudflare run the tests, build the site and deploy it to https://materialmath.org. If a formula test fails, nothing is deployed.
+
+- Cloudflare Worker `materialmath`, imported from `archcos/materialmath`.
+- Build command: `npm test && npm run build`. Deploy command: `npx wrangler deploy`.
+- Domains and other settings live in `wrangler.jsonc`, so change them there and push.
+- The site's domain and contact email are in the `SITE` block in `build.js`.
+- `dist/` is built by Cloudflare and is not committed.
 
 ## AdSense
 1. Wait until the site is live on your domain, then apply at adsense.google.com.

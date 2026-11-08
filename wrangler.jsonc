@@ -1,4 +1,5 @@
-// Cloudflare deploy config: serves the built dist/ folder as a static site. Deploy with: npm run deploy
+// Cloudflare config: serves the built dist/ folder as a static site.
+// Deploys happen only through GitHub: Cloudflare runs `npm test && npm run build` then `npx wrangler deploy` on every push to main.
 {
   "name": "materialmath",
   "compatibility_date": "2026-11-01",

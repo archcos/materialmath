@@ -3,3 +3,7 @@ dist/
 # Wrangler's local cache: holds your Cloudflare account details
 .wrangler/
 node_modules/
+# Social media ads and the scripts that make them: kept on this PC only, not in the public repo
+ads/
+ad.js
+ad-video.js

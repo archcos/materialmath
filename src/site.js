@@ -8,6 +8,49 @@ window.MMProject = {
     dispatchEvent(new Event('mm-project'));
   },
 };
+// Region, currency and default units, guessed from the browser's language setting (en-GB -> GB).
+// No location lookup: it's free, private and works offline. Visitors can override both, and the choice is remembered.
+window.MMLocale = (function () {
+  const tag = (navigator.languages && navigator.languages[0]) || navigator.language || 'en-US';
+  let region = '';
+  try { region = new Intl.Locale(tag).region || ''; } catch (e) {}
+  const EURO = 'AT BE CY DE EE ES FI FR GR HR IE IT LT LU LV MT NL PT SI SK'.split(' ');
+  const BY_REGION = { US: 'USD', CA: 'CAD', GB: 'GBP', AU: 'AUD', NZ: 'NZD', IN: 'INR', PH: 'PHP', ZA: 'ZAR', SG: 'SGD' };
+  const guess = BY_REGION[region] || (EURO.includes(region) ? 'EUR' : 'USD');
+  const read = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const fmt = cur => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur });
+  let names = null;
+  try { names = new Intl.DisplayNames(['en'], { type: 'currency' }); } catch (e) {}
+  return {
+    currencies: ['USD', 'CAD', 'GBP', 'EUR', 'AUD', 'NZD', 'INR', 'PHP', 'ZAR', 'SGD'],
+    currency: () => read('mm-cur') || guess,
+    // The default prices are US store prices: pre-fill them only for US visitors, or anyone who picked US dollars,
+    // not for regions that merely fall back to USD (in Mexico "$" means pesos).
+    usPrices: cur => cur === 'USD' && (!region || region === 'US' || read('mm-cur') === 'USD'),
+    setCurrency(cur) { try { localStorage.setItem('mm-cur', cur); } catch (e) {} },
+    // Imperial for the US and Canada (Canadian building trades work in feet and inches) and when the region is unknown.
+    sys: () => read('mm-sys') || (!region || ['US', 'CA', 'LR', 'MM'].includes(region) ? 'imp' : 'met'),
+    money: (x, cur) => fmt(cur).format(x),
+    symbol: cur => fmt(cur).formatToParts(0).find(p => p.type === 'currency').value,
+    name: cur => (names ? names.of(cur) : cur),
+  };
+})();
+
+// Copies text for the Copy buttons; resolves true if it worked.
+window.MMCopy = async text => {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    // older browsers and in-app browsers (like Facebook's) block the Clipboard API; fall back to a hidden textarea
+    const t = Object.assign(document.createElement('textarea'), { value: text });
+    t.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(t);
+    t.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e2) {}
+    t.remove();
+    return ok;
+  }
+};
+
 (function () {
   const badge = document.querySelector('.proj-count');
   if (!badge) return;

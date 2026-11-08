@@ -5,8 +5,7 @@
   const C = MM.CALCS.find(c => c.slug === el.dataset.slug);
   const U = MM.UNITS, FT = U.len[0][1], IN = U.small[0][1];
   const hints = C.hints || {};
-  let sys = 'imp', rows = null;
-  try { if (localStorage.getItem('mm-sys') === 'met') sys = 'met'; } catch (e) {}
+  let sys = MMLocale.sys(), cur = MMLocale.currency(), rows = null; // from site.js, which loads first (all three are deferred)
 
   const i = () => (sys === 'imp' ? 0 : 1);
   const unit = k => (U[k] ? U[k][i()][0] : k === 'pct' ? '%' : '');
@@ -33,10 +32,11 @@
     <h2 class="res-title">You need</h2>
     <div class="headline" aria-live="polite"></div>
     <div class="results"></div>
-    ${C.prices ? `<div class="cost"><h2 class="res-title">Cost estimate</h2>
+    ${C.prices ? `<div class="cost"><div class="cost-head"><h2 class="res-title">Cost estimate</h2>
+    <label class="cur">Currency <select>${MMLocale.currencies.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c} · ${MMLocale.name(c)}</option>`).join('')}</select></label></div>
     <table class="costs"></table>
     <p class="total" aria-live="polite"></p>
-    <p class="help">Rough typical US store prices. Type the prices at your store and the total updates.</p></div>` : ''}
+    <p class="help cost-help"></p></div>` : ''}
     <div class="actions"><button type="button" class="btn add" data-tip="Saves this calculation to your project, so several jobs (like a slab, its gravel base and a fence) add up to one shopping list and total.">+ Add to project</button><button type="button" class="copy" data-tip="Copies your measurements, results${C.prices ? ' and cost estimate' : ''} as text, ready to paste into a text message, email or notes.">Copy results</button>${
       C.prices
         ? '<button type="button" class="btn alt" data-print="all" data-tip="Prints your measurements, quantities and cost estimate on one page, with boxes to tick off at the store.">Print shopping list</button><button type="button" class="btn alt" data-print="qty" data-tip="The same printout without the prices and total. Handy for giving to a supplier or helper.">Print without prices</button>'
@@ -65,6 +65,7 @@
         const k = priced[n][1], b = rows.find(r => r[0] === label)[1];
         return { label, qtyText, qty: k === 'count' ? b : fromBase(k, b), unit: k === 'count' ? '' : unit(k), price, cost };
       }),
+      currency: cur,
     };
     const list = MMProject.get();
     list.push(item);
@@ -72,9 +73,17 @@
     el.querySelector('.added').innerHTML = `Added. Your project has ${list.length} item${list.length > 1 ? 's' : ''}. <a href="/project/">View project and total →</a>`;
   });
 
-  // ---- Cost estimate: one row per priced result row; prices are remembered per calculator, unit system and item.
-  const money = x => '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const priceKey = l => `mm-price:${C.slug}:${sys}:${l}`;
+  // ---- Cost estimate: one row per priced result row; prices are remembered per calculator, currency, unit system and item.
+  // Default prices are US store prices, so they only fill in for US dollars; other currencies start blank.
+  const money = x => MMLocale.money(x, cur);
+  const priceKey = l => `mm-price:${C.slug}:${cur}:${sys}:${l}`;
+  const curSelect = el.querySelector('.cur select');
+  if (curSelect) curSelect.addEventListener('change', () => {
+    cur = curSelect.value;
+    MMLocale.setCurrency(cur);
+    buildCosts();
+    update();
+  });
   let priced = []; // [label, kind, per-text] for the current unit system
 
   function buildCosts() {
@@ -83,11 +92,16 @@
     const seen = new Set();
     priced = C.compute(ones, sys).filter(([l]) => C.prices[l] && !seen.has(l) && seen.add(l))
       .map(([l, , k]) => [l, k, C.prices[l][2] || (k === 'count' ? 'each' : 'per ' + unit(k))]);
+    const sym = MMLocale.symbol(cur);
+    const us = MMLocale.usPrices(cur);
+    el.querySelector('.cost-help').textContent = us
+      ? 'Rough typical US store prices. Type the prices at your store and the total updates.'
+      : 'Type the prices at your local store and the total updates.';
     costTable.innerHTML = priced.map(([l, , per]) => {
-      let p = C.prices[l][i()];
+      let p = us ? C.prices[l][i()] : '';
       try { const s = localStorage.getItem(priceKey(l)); if (s !== null) p = s; } catch (e) {}
       return `<tr><th scope="row">${l}<span class="qty"></span></th>
-        <td><span class="price"><span aria-hidden="true">$</span><input type="number" inputmode="decimal" min="0" step="any" value="${p}" data-item="${l}" aria-label="Price for ${l}, ${per}"></span><span class="per">${per}</span></td>
+        <td><span class="price"><span aria-hidden="true">${sym}</span><input type="number" inputmode="decimal" min="0" step="any" value="${p}" data-item="${l}" aria-label="Price for ${l}, ${per}"></span><span class="per">${per}</span></td>
         <td class="line"></td></tr>`;
     }).join('');
   }
@@ -189,18 +203,9 @@
   copy.addEventListener('click', async () => {
     if (!rows) return;
     const { lines, total } = updateCosts();
-    const costText = lines.length ? ['', 'Cost estimate:', ...lines.map(([l, q, p, c]) => `${l}: ${q} × $${p} = ${c >= 0 ? money(c) : '—'}`), ...(total >= 0 ? [`Estimated total: ${money(total)}`] : [])] : [];
+    const costText = lines.length ? ['', 'Cost estimate:', ...lines.map(([l, q, p, c]) => `${l}: ${q}${p >= 0 ? ` × ${money(p)}` : ''} = ${c >= 0 ? money(c) : '—'}`), ...(total >= 0 ? [`Estimated total: ${money(total)}`] : [])] : [];
     const text = [C.title, '', ...C.inputs.map(([id, label, k]) => `${label}: ${shown(id, k)}`), '', ...rows.map(([l, b, k]) => `${l}: ${fmt(b, k)}`), ...costText, '', location.href].join('\n');
-    let ok = false;
-    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
-      // older browsers and embedded webviews block the Clipboard API; fall back to a hidden textarea
-      const t = Object.assign(document.createElement('textarea'), { value: text });
-      t.style.cssText = 'position:fixed;opacity:0';
-      document.body.append(t);
-      t.select();
-      try { ok = document.execCommand('copy'); } catch (e2) {}
-      t.remove();
-    }
+    const ok = await MMCopy(text);
     copy.textContent = ok ? 'Copied!' : 'Could not copy';
     setTimeout(() => (copy.textContent = 'Copy results'), 2000);
   });

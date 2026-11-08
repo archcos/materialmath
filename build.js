@@ -98,7 +98,7 @@ ${body}
 <footer><div class="wrap">
   <nav><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms</a></nav>
   <p>© ${year} ${SITE.name}. Results are estimates. Check product labels and local building codes before you buy or build.</p>
-</div></footer>${calc ? '\n<script src="/formulas.js"></script>\n<script src="/calc-ui.js"></script>' : ''}
+</div></footer>${calc ? '\n<script src="/formulas.js" defer></script>\n<script src="/calc-ui.js" defer></script>' : ''}
 </body>
 </html>
 `;

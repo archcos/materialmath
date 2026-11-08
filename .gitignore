@@ -1,0 +1,5 @@
+# Built by `node build.js` (Cloudflare rebuilds it on every push)
+dist/
+# Wrangler's local cache: holds your Cloudflare account details
+.wrangler/
+node_modules/

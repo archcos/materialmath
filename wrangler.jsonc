@@ -2,6 +2,15 @@
 {
   "name": "materialmath",
   "compatibility_date": "2026-11-01",
+  // Keeps the backup address materialmath.arjay-charcos25.workers.dev working. Pages point Google at materialmath.org
+  // (canonical tags), so leaving it on is harmless; set false once the domain is confirmed working if you prefer.
+  "workers_dev": true,
+  // Cloudflare creates the DNS records for these on deploy; the zone must be Active in this account first.
+  // www is redirected to the bare domain by a Redirect Rule in the dashboard (Rules > Redirect Rules).
+  "routes": [
+    { "pattern": "materialmath.org", "custom_domain": true },
+    { "pattern": "www.materialmath.org", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./dist",
     "not_found_handling": "404-page",

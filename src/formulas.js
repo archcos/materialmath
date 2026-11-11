@@ -25,7 +25,7 @@
 
   const up = x => Math.ceil(x - 1e-9); // float noise: 675.0000001 must stay 675
   const imp = sys => sys === 'imp';
-  const volRows = (V, sys) => [['Volume needed', V, 'vol'], ...(imp(sys) ? [['Volume needed', V, 'cuft']] : [])];
+  const volRows = (V, sys) => [['Volume needed', V, 'vol'], ...(imp(sys) ? [['Volume in cubic feet', V, 'cuft']] : [])];
 
   // Premix concrete: an 80 lb bag yields about 0.6 cu ft; metric bags are scaled by weight.
   const BAG_M3_PER_KG = (0.6 * FT3) / (80 * 0.45359237);

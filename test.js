@@ -18,7 +18,7 @@ near(get('concrete-calculator', slab, 'Volume needed', 'vol') / YD3, 1.358, 'sla
 assert.strictEqual(get('concrete-calculator', slab, '80 lb bags'), 62);
 assert.strictEqual(get('concrete-calculator', { L: 1, W: 1, T: 1, waste: 0 }, '25 kg bags', null, 'met'), 86);
 
-near(get('concrete-column-calculator', { D: inch(12), H: ft(4), P: 0, N: 1, waste: 0 }, 'Volume needed', 'cuft') / FT3, Math.PI, 'column');
+near(get('concrete-column-calculator', { D: inch(12), H: ft(4), P: 0, N: 1, waste: 0 }, 'Volume in cubic feet') / FT3, Math.PI, 'column');
 assert.strictEqual(get('concrete-column-calculator', { D: inch(10), H: ft(3), P: inch(3.5), N: 1, waste: 0.1 }, '80 lb bags'), 3);
 
 assert.strictEqual(get('concrete-block-calculator', { L: ft(20), H: ft(4), B: 128 * IN * IN, waste: 0.05 }, 'Blocks needed'), 95);

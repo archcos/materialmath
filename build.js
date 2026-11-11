@@ -11,12 +11,12 @@ const SITE = {
   url: 'https://materialmath.org', // your domain, no trailing slash
   email: 'contact@materialmath.org', // shown on the Contact page; forward it to your inbox with Cloudflare Email Routing
   adsenseClient: '', // e.g. 'ca-pub-1234567890123456' once AdSense gives you one
+  policyDate: '2026-11-11', // "Last updated" on the Privacy and Terms pages: change it when you edit their text
 };
 // ---------------------------------------
 
 const OUT = path.join(__dirname, 'dist');
 const year = new Date().getFullYear();
-const today = new Date().toISOString().slice(0, 10);
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 // Structured data for Google. "<" is escaped so text can never close the <script> tag.
 const ldJson = obj => `\n<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', ...obj }).replace(/</g, '\\u003c')}</script>`;
@@ -185,9 +185,10 @@ const info = {
 <p>Email: <a href="mailto:${SITE.email}">${SITE.email}</a></p>
 <p>If you are reporting a calculation problem, please include the calculator name and the numbers you entered.</p>`],
   privacy: ['Privacy Policy', 'Privacy Policy', `How ${SITE.name} handles your data, cookies and advertising.`, `
-<p>Last updated: ${today}</p>
+<p>Last updated: ${SITE.policyDate}</p>
 <h2>What we collect</h2>
-<p>The calculators run entirely in your browser. The numbers you type are not sent to us or stored on our servers. We remember your unit choice (imperial or metric) in your browser's local storage so the next calculator opens in the same units.</p>
+<p>The calculators run entirely in your browser. The numbers you type are not sent to us or stored on our servers.</p>
+<p>To save you retyping, your browser's local storage keeps your units (imperial or metric), your light or dark theme, your currency, the prices you type into cost estimates, and the items you add to My project. They stay on your device and are never sent to us. To delete them, clear this site's data in your browser settings, or use <b>Clear project</b> on the My project page.</p>
 <h2>Advertising and cookies</h2>
 <p>We use Google AdSense to show ads. Third-party vendors, including Google, use cookies to serve ads based on your prior visits to this website or other websites. Google's use of advertising cookies enables it and its partners to serve ads to you based on your visits to this site and/or other sites on the Internet.</p>
 <p>You can opt out of personalised advertising by visiting <a href="https://adssettings.google.com/" rel="nofollow">Google Ads Settings</a>. You can also opt out of some third-party vendors' use of cookies for personalised advertising at <a href="https://www.aboutads.info/choices/" rel="nofollow">www.aboutads.info</a>.</p>
@@ -199,7 +200,7 @@ const info = {
 <h2>Contact</h2>
 <p>Questions about this policy: <a href="mailto:${SITE.email}">${SITE.email}</a>.</p>`],
   terms: ['Terms of Use', 'Terms of Use', `Terms for using ${SITE.name}.`, `
-<p>Last updated: ${today}</p>
+<p>Last updated: ${SITE.policyDate}</p>
 <p>${SITE.name} provides calculators for general estimating only. Results depend on the numbers you enter and on typical product sizes and coverage rates, which may differ from the products you buy.</p>
 <p>The site is provided "as is", without warranties of any kind. We are not responsible for losses, extra costs or damage arising from use of these results. Check product labels and local building codes, and consult a qualified professional for structural, electrical or safety-critical work.</p>
 <p>We may change or remove calculators and these terms at any time.</p>`],
@@ -217,12 +218,12 @@ write('project/index.html', page({
 <p class="print-only print-brand"><img src="/favicon.svg" alt="" width="18" height="18"><span>Estimated with <b>${SITE.name}</b> · ${SITE.url.replace(/^https?:\/\//, '')}</span></p>
 <script src="/project.js" defer></script>`,
 }));
-write('404.html', page({ title: `Page not found | ${SITE.name}`, desc: 'Page not found.', url: '/404.html', body: '<h1>Page not found</h1><p>That page does not exist. <a href="/">See all calculators</a>.</p>' }));
+write('404.html', page({ title: `Page not found | ${SITE.name}`, desc: 'Page not found.', url: '/404.html', noindex: true, body: '<h1>Page not found</h1><p>That page does not exist. <a href="/">See all calculators</a>.</p>' }));
 
-// SEO + AdSense files
+// SEO + AdSense files. No <lastmod>: a build date on every page each push is wrong, and Google ignores it once it learns that.
 write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(u => `  <url><loc>${SITE.url}${u}</loc><lastmod>${today}</lastmod></url>`).join('\n')}
+${urls.map(u => `  <url><loc>${SITE.url}${u}</loc></url>`).join('\n')}
 </urlset>
 `);
 write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${SITE.url}/sitemap.xml\n`);

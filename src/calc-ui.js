@@ -220,20 +220,23 @@
     return fromBase(k, b).toLocaleString('en-US', { maximumFractionDigits: 2 }) + (U[k] ? ' ' + unit(k) : '');
   }
 
+  function invalid(msg) {
+    rows = null;
+    head.innerHTML = '';
+    out.innerHTML = `<p class="hint">${msg}</p>`;
+    copy.disabled = add.disabled = true;
+    updateCosts();
+  }
+
   function update() {
     const v = {};
     for (const [id, , k] of C.inputs) {
       v[id] = read(id, k);
-      if (!(v[id] >= 0)) {
-        rows = null;
-        head.innerHTML = '';
-        out.innerHTML = '<p class="hint">Enter a number (0 or more) in every field.</p>';
-        copy.disabled = add.disabled = true;
-        updateCosts();
-        return;
-      }
+      if (!(v[id] >= 0)) return invalid('Enter a number (0 or more) in every field.');
     }
     rows = C.compute(v, sys);
+    // a 0 in a size or spacing we divide by gives Infinity, NaN or negative counts (stair rise 0 -> -1 treads)
+    if (rows.some(r => !(r[1] >= 0 && isFinite(r[1])))) return invalid('Check your numbers: a size, spacing or height can\'t be 0.');
     const main = rows.find(r => r[2] === 'count') || rows[0]; // the headline is the first "buy this many" row
     head.innerHTML = `<span class="big">${fmt(main[1], main[2])}</span><span>${main[0]}</span>`;
     out.innerHTML = '<table>' + rows.map(([l, b, k]) => `<tr><th scope="row">${l}</th><td>${fmt(b, k)}</td></tr>`).join('') + '</table>';

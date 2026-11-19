@@ -152,6 +152,65 @@ const siding = { L: ft(40), W: ft(30), H: ft(9), G: ft(6), doors: 2, windows: 8,
 near(get('siding-calculator', siding, 'Wall area') / FT2, 1280, 'siding area');
 assert.strictEqual(get('siding-calculator', siding, 'Vinyl siding boxes (2 squares each)'), 8);
 
+// House: each part comes from its own calculator. Small house 24 × 36 ft, 8 ft walls, 6/12, 96 ft of inside walls.
+const home = { L: ft(36), W: ft(24), stories: 1, H: ft(8), roof: 0, pitch: Math.sqrt(1.25), over: inch(12), walls: 4, spacing: 16, I: ft(96), doors: 2, gdoors: 0, idoors: 6, windows: 8, fin: 1 };
+near(get('house-material-calculator', home, 'Concrete: ready-mix to order') / YD3, 15, 'house concrete (4 in slab + thickened edge, +10%, ¼ yd steps)');
+assert.strictEqual(get('house-material-calculator', home, 'Wall studs (2×4)'), 243);
+assert.strictEqual(get('house-material-calculator', home, 'Roof trusses (about 2 ft apart)'), 19);
+assert.strictEqual(get('house-material-calculator', home, 'Drywall sheets'), 116); // (960 + 864 + 1,536 sq ft) × 1.1 ÷ 32
+assert.strictEqual(get('house-material-calculator', home, 'Shingle bundles'), 37);
+// Two stories: walls and drywall roughly double, the slab and roof stay the same, and upper-floor joists appear.
+const two = { ...home, stories: 2 };
+assert.strictEqual(get('house-material-calculator', two, 'Wall studs (2×4)'), 355); // outside walls doubled; the 96 ft of inside walls split over two floors
+assert.strictEqual(get('house-material-calculator', { ...home, walls: 6, spacing: 24 }, 'Wall studs (2×6)'), 183);
+near(get('house-material-calculator', two, 'Concrete: ready-mix to order') / YD3, 15, 'same slab for two stories');
+assert(get('house-material-calculator', two, 'Floor joists, upper floor (2×10, 16 ft)') > 0);
+// Hip roof: no gables, so less siding; more ridge cap for the hips.
+assert(get('house-material-calculator', { ...home, roof: 1 }, 'Siding: vinyl') < get('house-material-calculator', home, 'Siding: vinyl'), 'hip roof has no gable siding');
+assert(get('house-material-calculator', { ...home, roof: 1 }, 'Ridge cap bundles') > get('house-material-calculator', home, 'Ridge cap bundles'), 'hips need ridge cap');
+assert(get('house-material-calculator', { ...home, walls: 6 }, 'Wall insulation bags (R-21 batts)') > 0);
+const shell = CALCS.find(c => c.slug === 'house-material-calculator').compute({ ...home, fin: 0 }, 'imp');
+assert(!shell.some(r => r[0] === 'Drywall sheets'), 'an unfinished shell has no drywall');
+// A taller upper floor: more siding and drywall than two equal stories, same framing count.
+const tall = { ...two, H2: ft(10) };
+assert(get('house-material-calculator', tall, 'Siding: vinyl') > get('house-material-calculator', two, 'Siding: vinyl'));
+assert(get('house-material-calculator', tall, 'Drywall sheets') > get('house-material-calculator', two, 'Drywall sheets'));
+// Block walls: (960 − 40 − 120) + (768 − 120) = 1,448 sq ft of wall ÷ 0.889 sq ft per block × 1.05 = 1,711 blocks, 13 per bag.
+const blockHouse = { ...home, walls: 8 }, rowsOf = x => Object.fromEntries(CALCS.find(c => c.slug === 'house-material-calculator').compute(x, 'imp'));
+assert.strictEqual(get('house-material-calculator', blockHouse, 'Concrete blocks (16 × 8 in face)'), 1711);
+assert.strictEqual(get('house-material-calculator', blockHouse, '80 lb bags of mortar mix'), 132);
+assert(!('Wall studs (2×4)' in rowsOf(blockHouse)) && !('Wall insulation bags (R-13 batts)' in rowsOf(blockHouse)), 'block walls: no studs or batts');
+assert('Roof sheathing (4 × 8 sheets)' in rowsOf(blockHouse) && rowsOf(blockHouse)['Stucco or render, inside walls (80 lb bags)'] > 0);
+assert(rowsOf(blockHouse)['Drywall sheets'] < rowsOf(home)['Drywall sheets'], 'block walls: drywall on the ceilings only');
+// Roofing: metal panels on a 38 ft gable roof, 3 ft each, both sides = 26; tiles about 90 per square.
+assert.strictEqual(get('house-material-calculator', { ...home, roofing: 1 }, 'Metal roof panels (3 ft wide)'), 26);
+near(get('house-material-calculator', { ...home, roofing: 2 }, 'Roof tiles') / (get('house-material-calculator', home, 'Roofing squares') * 90), 1, 'tiles per square');
+assert(!('Shingle bundles' in rowsOf({ ...home, roofing: 1 })));
+// Outside finish: render about 11 sq ft per 80 lb bag; brick veneer about 6.75 bricks per sq ft, with mortar.
+const wall = rowsOf(home)['Siding: vinyl'] / 1.1 / FT2;
+near(rowsOf({ ...home, siding: 2 })['Stucco or render, outside walls (80 lb bags)'], Math.ceil((wall * 1.05) / 10.68), 'render bags');
+near(rowsOf({ ...home, siding: 3 })['Bricks for the veneer'], Math.ceil(wall * 6.75 * 1.05), 'veneer bricks');
+assert(rowsOf({ ...home, siding: 3 })['80 lb bags of mortar mix'] > 0);
+// Nails, screws and small items (extras on): shingles take 320 nails a square at 140 per lb, in 5 lb boxes;
+// two hurricane ties per truss; block walls get wall plugs and no framing nails or house wrap; "Leave them out" drops them all.
+const ex = rowsOf({ ...home, extras: 1 });
+assert.strictEqual(ex['Nails: 1¼ in roofing (5 lb boxes)'], Math.ceil((ex['Roofing squares'] * 320) / 140 / 5));
+assert.strictEqual(ex['Hurricane ties (2 per truss)'], 2 * ex['Roof trusses (about 2 ft apart)']);
+assert.strictEqual(ex['Drywall screws (boxes of 1,000)'], Math.ceil((ex['Drywall sheets'] * 32) / 1000));
+assert(ex['Nails: 16d framing (5 lb boxes)'] > 0 && ex['House wrap (9 × 100 ft rolls)'] > 0 && ex['Anchor bolts (½ × 10 in)'] > 0);
+const exBlock = rowsOf({ ...home, walls: 8, extras: 1 });
+assert(exBlock['Wall plugs (tox) with screws (packs of 100)'] > 0 && !('Nails: 16d framing (5 lb boxes)' in exBlock) && !('House wrap (9 × 100 ft rolls)' in exBlock));
+assert(rowsOf({ ...home, roofing: 1, extras: 1 })['Metal roofing screws (bags of 250)'] > 0);
+assert(!Object.keys(rowsOf({ ...home, extras: 0 })).some(l => /^Nails|screws|Hurricane|Caulk/.test(l)), 'small items left out');
+// Flooring: tile adds thinset, one 50 lb bag per 95 sq ft.
+assert.strictEqual(rowsOf({ ...home, floor: 1 })['Tile adhesive (50 lb bags)'], Math.ceil((864 * 1.1) / 95));
+// Sample builds name real fields, and their menu positions exist.
+for (const c of CALCS) for (const [name, vals] of c.presets || []) for (const [id, val] of Object.entries(vals)) {
+  const input = c.inputs.find(i => i[0] === id);
+  assert(input, `${c.slug} sample "${name}": no field "${id}"`);
+  if (input[2] === 'select') assert(input[4][val], `${c.slug} sample "${name}": no option ${val} for "${id}"`);
+}
+
 // Every calculator has an article, and its defaults give finite results in both unit systems.
 for (const c of CALCS) {
   assert(fs.existsSync(`content/${c.slug}.html`), `missing content/${c.slug}.html`);
@@ -163,11 +222,70 @@ for (const c of CALCS) {
   for (const [id, , k, , opts] of c.inputs) if (k === 'select') for (const [, val] of opts)
     for (const sys of ['imp', 'met']) for (const [l, b] of c.compute({ ...v, [id]: val }, sys)) assert(Number.isFinite(b), `${c.slug} ${id}=${val} ${sys} "${l}" is ${b}`);
   for (const id of Object.keys(c.show || {})) assert(c.inputs.some(i => i[0] === id) && c.inputs.some(i => i[0] === c.show[id][0]), `${c.slug}: show rule for "${id}" names a missing input`);
-  // Every price matches a result row, and each unit system that shows the row has a default price for it.
+  // Every price matches a result row (for the defaults or some menu choice, as calc-ui.js checks),
+  // and each unit system that shows the row has a default price for it.
+  const variants = [v, ...c.inputs.filter(i => i[2] === 'select').flatMap(([id, , , , opts]) => opts.map(o => ({ ...v, [id]: o[1] })))];
   for (const [label, p] of Object.entries(c.prices || {})) {
-    const shown = ['imp', 'met'].filter(sys => c.compute(v, sys).some(r => r[0] === label));
+    const shown = ['imp', 'met'].filter(sys => variants.some(x => c.compute(x, sys).some(r => r[0] === label)));
     assert(shown.length, `${c.slug}: price "${label}" matches no result row`);
     for (const sys of shown) assert(p[sys === 'imp' ? 0 : 1] > 0, `${c.slug}: no ${sys} price for "${label}"`);
+  }
+}
+
+// Every calculator has a live drawing (views.js) that renders in 3D and plan for its defaults and every menu choice.
+const MV = require('./src/views.js');
+for (const c of CALCS) {
+  assert(MV.views[c.slug], `${c.slug}: no 3D/plan view in src/views.js`);
+  const v = Object.fromEntries(c.inputs.map(([id, , k, def, opts]) => [id, k === 'select' ? opts[def][1] : UNITS[k] ? def * UNITS[k][0][1] : k === 'pct' ? def / 100 : def]));
+  for (const x of [v, ...c.inputs.filter(i => i[2] === 'select').flatMap(([id, , , , opts]) => opts.map(o => ({ ...v, [id]: o[1] })))]) {
+    const sc = new MV.Scene();
+    MV.views[c.slug](x, sc, { len: b => `${b.toFixed(2)} m` });
+    const out = MV.render3d(sc, { yaw: -0.6, elev: 0.5 }) + MV.renderPlan(sc);
+    assert(out.length > 100 && !/NaN|Infinity|undefined/.test(out), `${c.slug}: drawing failed for ${JSON.stringify(x)}`);
+  }
+}
+
+// 3D order: a small box standing on the far corner of a big flat slab is drawn after the slab from every side.
+// (Sorting faces by their middle point got this wrong, which broke the floor between two stories.)
+{
+  const sc = new MV.Scene();
+  sc.box(0, 0, 0, 10, 10, 0.3, '#111111');
+  sc.box(9, 9, 0.3, 1, 1, 3, '#eeeeee');
+  for (let yaw = -3; yaw <= 3; yaw += 0.25) {
+    const out = MV.render3d(sc, { yaw, elev: 0.5 }), last = c => Math.max(...[...out.matchAll(/fill="rgb\((\d+),/g)].map((m, i) => (c(+m[1]) ? i : -1)));
+    const firstSmall = [...out.matchAll(/fill="rgb\((\d+),/g)].findIndex(m => +m[1] > 100);
+    assert(firstSmall > last(r => r < 100), `3D order wrong at yaw ${yaw}`);
+  }
+}
+
+// House floor plans: the visitor's own plan is counted floor by floor, and the estimate follows it.
+{
+  const H = CALCS.find(c => c.slug === 'house-material-calculator');
+  const v = { L: 36 * FT, W: 24 * FT, stories: 2, H: 8 * FT, roof: 0, pitch: 1.118, over: FT, walls: 4, spacing: 16, I: 0, doors: 0, gdoors: 0, idoors: 0, windows: 0, fin: 1 };
+  const plan = { floors: [
+    { ext: [[{ kind: 'door', c: 5, w: 0.91 }, { kind: 'window', c: 2, w: 0.9 }, { kind: 'window', c: 5.3, w: 0.9 }], [], [{ kind: 'garage', c: 3, w: 4.88 }], []],
+      walls: [{ a: [5, 0], b: [5, 20], items: [{ kind: 'door', c: 3, w: 0.81 }] }, { a: [0, 4], b: [5, 4], items: [] }], rooms: [{ at: [2, 2], name: 'Den' }] },
+    { ext: [[{ kind: 'window', c: 3, w: 0.9 }], [], [], []], walls: [], rooms: [] }] };
+  const per = MV.house.counts(v, plan);
+  // the window at 5.3 overlaps the door at 5 and is left out; the 16 ft garage door fits the 24 ft end wall
+  assert.deepStrictEqual(per.map(c => [c.doors, c.gdoors, c.windows, c.idoors]), [[1, 1, 1, 1], [0, 0, 1, 0]]);
+  // inside walls: one across the width, stopped at the outside walls (7.315 - 2 × 0.14), and one stopped at its face (5 - 0.05 - 0.14)
+  near(per[0].I, (24 * FT - 0.28) + (5 - 0.05 - 0.14), 'drawn inside wall length');
+  assert.strictEqual(per[1].I, 0);
+  const rows = p => Object.fromEntries(H.compute({ ...v, I: per[0].I, doors: 1, gdoors: 1, idoors: 1, windows: 2, plan: p }, 'imp'));
+  assert(rows(per)['Wall studs (2×4)'] !== rows(undefined)['Wall studs (2×4)'], 'the drawn plan changes the framing');
+  assert(rows(per)['Drywall sheets'] > 0);
+  // the sample plan counts what it draws, and every floor of a sample renders from its plan
+  for (const [, p] of H.presets) {
+    const x = Object.fromEntries(H.inputs.map(([id, , k, def, opts]) => { const d = id in p ? p[id] : def; return [id, k === 'select' ? opts[d][1] : UNITS[k] ? d * UNITS[k][0][1] : d]; }));
+    const sp = MV.house.sample(x), c = MV.house.counts(x, sp);
+    assert.strictEqual(sp.floors.length, x.stories);
+    assert(c.reduce((s, f) => s + f.doors + f.gdoors, 0) <= x.doors + x.gdoors);
+    for (const floor of [0, 1]) {
+      const sc = new MV.Scene();
+      MV.views[H.slug](x, sc, { len: String, plan: sp, floor });
+      assert(MV.renderPlan(sc).length > 100 && MV.render3d(sc, { yaw: 1, elev: 0.4 }).length > 100);
+    }
   }
 }
 

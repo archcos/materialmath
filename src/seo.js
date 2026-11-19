@@ -4,6 +4,7 @@
 const a = (slug, text) => `<a href="/${slug}/">${text}</a>`;
 
 const TITLES = {
+  'house-material-calculator': 'House Material Calculator: Materials List & Cost to Build',
   'concrete-calculator': 'Concrete Calculator: Slabs, Footings, Steps & Bags',
   'concrete-column-calculator': 'Post Hole Concrete Calculator (Sonotube & Columns)',
   'concrete-block-calculator': 'Concrete Block Calculator: CMU, Cinder Blocks & Mortar',
@@ -35,6 +36,12 @@ const TITLES = {
 };
 
 const FAQS = {
+  'house-material-calculator': [
+    ['How much do the materials to build a house cost?', 'With rough US prices, the materials this calculator covers come to about $23,200 for a 24 × 36 ft (864 sq ft) one-story house, about $39,500 for a 30 × 50 ft (1,500 sq ft) home, and about $49,000 for a 2,240 sq ft two-story. Windows, doors, plumbing, electrical, heating, cabinets and labor are extra and usually cost several times more.'],
+    ['What materials do I need to build a house?', 'Concrete, gravel and rebar for the foundation; studs, plates, trusses and sheathing for the frame; shingles, underlayment, drip edge and ridge cap for the roof; siding; and, inside, insulation, drywall, paint, flooring and trim. Windows, doors and the mechanical systems come on top of that.'],
+    ['What does this calculator leave out?', 'Windows, doors, headers, plumbing, electrical, heating and cooling, cabinets, fixtures, permits and labor. It also assumes a rectangular building on a concrete slab, one or two stories, with wood or concrete block walls and a gable or hip roof.'],
+    ['How accurate is a house material estimate?', 'Treat it as a budget starting point, good to perhaps 10–20%. Real plans add details like beams, blocking and porches. Use it to plan and to check quotes, then get a takeoff from your plans or supplier before you order.'],
+  ],
   'concrete-calculator': [
     ['How many 80 lb bags of concrete make a cubic yard?', 'An 80 lb bag makes about 0.6 cu ft, and a cubic yard is 27 cu ft, so you need about 45 bags. With 60 lb bags it takes about 60, and with 40 lb bags about 90.'],
     ['Is it cheaper to use bags or ready-mix concrete?', 'For jobs under about 1 cubic yard, bags are usually cheaper and simpler. Above that, a ready-mix truck usually saves money and a lot of labor. Many suppliers add a short-load fee for small orders, so ask for the full delivered price.'],

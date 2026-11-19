@@ -149,11 +149,21 @@ function siding() {
   return s + dim(60, 184, 260, 184, 'House length', 160, 198) + dim(276, 90, 276, 170, 'Wall height', 292, 130, -90) + dim(44, 40, 44, 90, 'Gable', 34, 65, -90);
 }
 
+// A whole house seen from a gable end: slab, sided wall, attic insulation and roof.
+function house() {
+  let s = rect('concrete', 50, 160, 220, 12) + rect('siding', 60, 92, 200, 68);
+  for (let y = 100; y < 160; y += 8) s += line('lap', 60, y, 260, y);
+  s += poly('insul', [[66, 92], [160, 46], [254, 92]]) + poly('roof', [[44, 94], [160, 36], [276, 94], [266, 96], [160, 44], [54, 96]]);
+  s += rect('door', 145, 122, 30, 38) + rect('glass', 82, 108, 34, 26) + rect('glass', 204, 108, 34, 26) + line('ground', 10, 172, 310, 172);
+  return s + label(160, 84, 'Attic') + dim(50, 186, 270, 186, 'Building width', 160, 199) + dim(286, 92, 286, 160, 'Wall height', 302, 126, -90);
+}
+
 function picked(c, x, y, w, h, bw, bh, stagger, px, py) {
   return bond(c, x, y, w, h, bw, bh, stagger) + `<rect class="pick" x="${px}" y="${py}" width="${bw}" height="${bh}"/>` + planDims(x, y, w, h);
 }
 
 const DIAGRAMS = {
+  'house-material-calculator': house,
   'concrete-calculator': () => box('concrete', 80, 95, 170, 30, 45, 40)
     + dim(80, 142, 250, 142, 'Length', 165, 160) + dim(262, 130, 307, 90, 'Width', 296, 130) + dim(66, 95, 66, 125, 'Thickness', 56, 110, -90),
   'concrete-column-calculator': () => rect('soil', 20, 60, 280, 125) + rect('concrete', 115, 60, 90, 110) + rect('wood', 145, 15, 30, 140)

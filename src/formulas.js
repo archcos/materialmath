@@ -18,6 +18,7 @@
   };
 
   const CATS = {
+    builds: 'Whole Builds',
     concrete: 'Concrete & Masonry',
     landscape: 'Landscaping & Yard',
     interior: 'Interior & Finishing',
@@ -77,7 +78,191 @@
   const yesNo = [['No', 0], ['Yes', 1]];
   const pitches = Array.from({ length: 13 }, (_, r) => [r ? `${r}/12` : 'Flat (0/12)', Math.sqrt(1 + (r / 12) ** 2)]);
 
+  const run = (slug, v, sys) => CALCS.find(c => c.slug === slug).compute(v, sys);
+  const pick = (rows, label) => rows.find(r => r[0] === label)[1];
+
   const CALCS = [
+    {
+      slug: 'house-material-calculator', cat: 'builds', title: 'House Material Calculator',
+      desc: 'Estimate the materials to build a house, cabin, garage or shed: foundation, framing, roof, siding and the finished inside, with a cost total, a sample floor plan and a 3D view.',
+      inputs: [['L', 'Building length', 'len', 36], ['W', 'Building width', 'len', 24],
+        ['stories', 'Stories', 'select', 0, [['One story', 1], ['Two stories', 2]]], ['H', 'Wall height', 'len', 8], ['H2', 'Upper floor wall height', 'len', 8],
+        ['roof', 'Roof style', 'select', 0, [['Gable (two slopes)', 0], ['Hip (four slopes)', 1]]], ['pitch', 'Roof pitch', 'select', 6, pitches],
+        ['over', 'Roof overhang', 'small', 12],
+        ['roofing', 'Roofing', 'select', 0, [['Asphalt shingles', 0], ['Metal roofing panels', 1], ['Concrete or clay tiles', 2]]],
+        ['walls', 'Walls', 'select', 0, [['Wood studs 2×4, R-13 insulation', 4], ['Wood studs 2×6, R-21 insulation', 6], ['Concrete block (CMU, hollow block)', 8]]],
+        ['spacing', 'Stud spacing', 'select', 0, [['16 in (400 mm)', 16], ['24 in (600 mm)', 24]]],
+        ['siding', 'Outside finish', 'select', 0, [['Vinyl siding', 0], ['Fiber cement siding', 1], ['Stucco or cement render', 2], ['Brick veneer', 3]]],
+        ['I', 'Inside walls (total length)', 'len', 96], ['doors', 'Outside doors', 'count', 2], ['gdoors', 'Garage doors (16 × 7 ft)', 'count', 0],
+        ['idoors', 'Inside doors', 'count', 6], ['windows', 'Windows', 'count', 8],
+        ['fin', 'Inside', 'select', 0, [['Finished: insulation, drywall, paint, flooring', 1], ['Unfinished shell (shed, garage, workshop)', 0]]],
+        ['floor', 'Flooring', 'select', 0, [['Laminate or vinyl plank', 0], ['Ceramic or porcelain tile', 1], ['Hardwood', 2], ['Carpet', 3]]],
+        ['extras', 'Nails, screws and small items', 'select', 0, [['Include them', 1], ['Leave them out', 0]]]],
+      show: { H2: ['stories', [2]], spacing: ['walls', [4, 6]], floor: ['fin', [1]] },
+      // Values are imperial (ft, in) like the defaults; menus are the option's position. Materials not listed stay as chosen.
+      presets: [
+        ['Shed 10 × 12', { L: 12, W: 10, stories: 0, H: 8, roof: 0, pitch: 4, over: 6, walls: 0, spacing: 0, I: 0, doors: 1, gdoors: 0, idoors: 0, windows: 1, fin: 1 }],
+        ['Garage 24 × 24', { L: 24, W: 24, stories: 0, H: 9, roof: 0, pitch: 5, over: 12, walls: 0, spacing: 0, I: 0, doors: 1, gdoors: 1, idoors: 0, windows: 2, fin: 1 }],
+        ['Cabin 16 × 24', { L: 24, W: 16, stories: 0, H: 8, roof: 0, pitch: 8, over: 12, walls: 0, spacing: 0, I: 40, doors: 2, gdoors: 0, idoors: 2, windows: 6, fin: 0 }],
+        ['Small house 24 × 36', { L: 36, W: 24, stories: 0, H: 8, roof: 1, pitch: 6, over: 12, walls: 0, spacing: 0, I: 96, doors: 2, gdoors: 0, idoors: 6, windows: 8, fin: 0 }],
+        ['Family home 30 × 50', { L: 50, W: 30, stories: 0, H: 9, roof: 0, pitch: 6, over: 18, walls: 1, spacing: 0, I: 170, doors: 3, gdoors: 0, idoors: 10, windows: 14, fin: 0 }],
+        ['Two-story 28 × 40', { L: 40, W: 28, stories: 1, H: 8, H2: 8, roof: 1, pitch: 6, over: 18, walls: 1, spacing: 0, I: 220, doors: 2, gdoors: 0, idoors: 12, windows: 18, fin: 0 }],
+        ['Block house 26 × 33', { L: 33, W: 26, stories: 0, H: 9, roof: 1, pitch: 5, over: 24, roofing: 1, walls: 2, siding: 2, I: 90, doors: 2, gdoors: 0, idoors: 5, windows: 9, fin: 0, floor: 1 }],
+      ],
+      head: 'Floor area',
+      related: ['concrete-calculator', 'rebar-calculator', 'framing-calculator', 'concrete-block-calculator', 'roofing-calculator', 'siding-calculator', 'insulation-calculator', 'drywall-calculator', 'paint-calculator', 'flooring-calculator', 'baseboard-calculator', 'stair-calculator'],
+      compute(v, sys) {
+        // A rectangular building on a concrete slab, one or two stories, with a gable or hip roof whose ridge runs
+        // along the length. Each part runs the matching calculator, so the numbers match those pages.
+        // Metric builds use metric bar, stud, block and board sizes.
+        const m = imp(sys), st = v.stories || 1, P = 2 * (v.L + v.W), r = Math.sqrt(v.pitch ** 2 - 1), hip = v.roof === 1, block = v.walls === 8;
+        const G = hip ? 0 : (v.W / 2) * r, gd = v.gdoors || 0, share = (n, f) => Math.floor(n / st) + (f < n % st ? 1 : 0);
+        // Per floor: from the visitor's own floor plan when they drew one (v.plan, one count per story),
+        // else the totals split evenly, with the outside doors on the ground floor. The upper floor can be taller or lower.
+        const fp = f => v.plan && v.plan[f];
+        const inside = f => (fp(f) ? fp(f).I : v.I / st), inDoors = f => (fp(f) ? fp(f).idoors : share(v.idoors, f));
+        const outDoors = f => (fp(f) ? fp(f).doors + fp(f).gdoors : f ? 0 : v.doors + gd), wins = f => (fp(f) ? fp(f).windows : share(v.windows, f));
+        const ht = f => (f && v.H2 > 0 ? v.H2 : v.H), floors = Array.from({ length: st }, (_, f) => f), Hs = floors.reduce((s, f) => s + ht(f), 0);
+        const DOOR = 20 * FT2, GDOOR = 112 * FT2, WIN = 15 * FT2;
+        const holes = f => (fp(f) ? fp(f).doors * DOOR + fp(f).gdoors * GDOOR : f ? 0 : v.doors * DOOR + gd * GDOOR) + wins(f) * WIN;
+        // Cement render or stucco, base and finish coats together: 3/4 in (20 mm) thick; a kg of dry mix makes about 0.52 L.
+        const render = A => (m ? up((A * 1.05) / ((80 * LB * 0.00052) / (0.75 * IN))) : up((A * 1.05) / ((25 * 0.00052) / 0.02)));
+        const renderLabel = where => (m ? `Stucco or render, ${where} (80 lb bags)` : `Render, ${where} (25 kg bags)`);
+        let mortarKg = 0;
+        // Foundation: 4 in slab, thickened to 12 in deep and 12 in wide around the edge (8 in below the slab).
+        const conc = (v.L * v.W * 4 * IN + P * FT * 8 * IN) * 1.1, step = m ? 0.25 * 27 * FT3 : 0.25;
+        const rebar = pick(run('rebar-calculator', { L: v.L, W: v.W, S: 18 * IN, E: 3 * IN, size: m ? 1 : 4, BL: m ? 20 * FT : 6, waste: 0.05 }, sys), 'Bars to buy');
+        const rows = [['Floor area', v.L * v.W * st, 'area'],
+          ['Concrete: ready-mix to order', up(conc / step) * step, 'vol'], ['Gravel base under the slab', v.L * v.W * 4 * IN * 1.2, 'vol'],
+          [m ? 'Rebar: #4 bars (20 ft)' : 'Rebar: 12 mm bars (6 m)', rebar, 'count']];
+        if (!block) {
+          // Wood walls, floor by floor: double top plate; inside walls get one intersection per 12 ft.
+          const S = v.spacing === 24 ? (m ? 24 * IN : 0.6) : (m ? 16 * IN : 0.4);
+          const frame = (L, C, O) => run('framing-calculator', { L, S, C, O, plates: 3, PL: m ? 16 * FT : 4.8, waste: 0.1 }, sys);
+          let studs = 0, plates = 0;
+          for (const f of floors) {
+            const ext = frame(P, 4, outDoors(f) + wins(f)), I = inside(f);
+            studs += pick(ext, 'Studs') + (I ? pick(frame(I, up(I / (12 * FT)), inDoors(f)), 'Studs') : 0);
+            plates += pick(ext, 'Plate boards') + (I ? pick(frame(I, up(I / (12 * FT)), inDoors(f)), 'Plate boards') : 0);
+          }
+          rows.push([`Wall studs (2×${v.walls === 6 ? 6 : 4})`, studs, 'count'], [m ? 'Wall plates (16 ft boards)' : 'Wall plates (4.8 m boards)', plates, 'count']);
+        } else {
+          // Block walls: the outside walls and every inside wall, story by story, less the doors and windows, plus 5%.
+          // Every block width has the same face, so inside walls (often thinner block) count the same way.
+          const [, face, kg] = MASONRY[m ? 3 : 4];
+          const A = floors.reduce((s, f) => s + Math.max(0, P * ht(f) - holes(f)) + Math.max(0, inside(f) * ht(f) - inDoors(f) * DOOR), 0);
+          const n = up((A / face) * 1.05);
+          mortarKg += n * kg;
+          rows.push([m ? 'Concrete blocks (16 × 8 in face)' : 'Concrete blocks (440 × 215 mm face)', n, 'count']);
+        }
+        if (st > 1) {
+          // Upper floor: 2×10 joists at 16 in (400 mm) across the width, and tongue-and-groove subfloor.
+          const runs = up(v.L / (m ? 16 * IN : 0.4)) + 1, len = m ? 16 * FT : 4.8;
+          rows.push([m ? 'Floor joists, upper floor (2×10, 16 ft)' : 'Floor joists, upper floor (2×10, 4.8 m)', runs * up(v.W / len), 'count'],
+            ['Subfloor sheets, upper floor', up((v.L * v.W * 1.1) / (m ? 32 * FT2 : 1.2 * 2.4)), 'count']);
+        }
+        // Roof: trusses about 2 ft apart; hip roofs have no gable rakes but four hips that take ridge cap.
+        const o = v.over, RL = v.L + 2 * o, RW = v.W + 2 * o;
+        const roof = run('roofing-calculator', { L: RL, W: RW, pitch: v.pitch, waste: 0.1 }, sys), roofArea = pick(roof, 'Roof area incl. waste');
+        const edge = (hip ? 2 * (RL + RW) : 2 * RL + 2 * RW * v.pitch) * 1.1, piece = m ? 10 * FT : 3;
+        const ridge = hip ? Math.max(0, RL - RW) + 4 * Math.sqrt(2 * (RW / 2) ** 2 + ((RW / 2) * r) ** 2) : RL;
+        // Outside walls: every story plus a 1 ft floor band between them, the gables, minus doors and windows.
+        const wallArea = Math.max(0, P * (Hs + (st - 1) * FT) + v.W * G - v.doors * DOOR - gd * GDOOR - v.windows * WIN);
+        const sheet = m ? 32 * FT2 : 1.2 * 2.4, sheetLabel = m ? '4 × 8 sheets' : '1.2 × 2.4 m sheets';
+        rows.push(['Roof trusses (about 2 ft apart)', up(v.L / (m ? 24 * IN : 0.6)) + 1, 'count'],
+          block ? [`Roof sheathing (${sheetLabel})`, up(roofArea / sheet), 'count'] : [`Sheathing, roof and walls (${sheetLabel})`, up((roofArea + wallArea * 1.1) / sheet), 'count']);
+        const under = ['Roof underlayment rolls', pick(roof, 'Underlayment rolls (10 squares each)'), 'count'], drip = [m ? 'Drip edge (10 ft pieces)' : 'Drip edge (3 m pieces)', up(edge / piece), 'count'];
+        if (v.roofing === 1) {
+          // Metal: panels run from eave to ridge; about 3 ft (0.9 m) of cover each. A hip roof's triangles are counted by area.
+          const cover = m ? 3 * FT : 0.9, slope = (RW / 2) * v.pitch;
+          rows.push(['Metal roofing', roofArea, 'area'], [m ? 'Metal roof panels (3 ft wide)' : 'Metal roof sheets (0.9 m wide)', hip ? up(roofArea / (cover * slope)) : 2 * up(RL / cover), 'count'],
+            ['Panel length (eave to ridge)', slope, 'len'], under, drip, [m ? 'Metal ridge cap (10 ft pieces)' : 'Metal ridge cap (3 m pieces)', up((ridge * 1.1) / piece), 'count']);
+        } else if (v.roofing === 2) {
+          // Concrete or clay tiles: about 90 per square (10.5 per m²); ridge tiles about 16½ in (42 cm) long.
+          rows.push(['Roof tiles', up(roofArea * (m ? 90 / (100 * FT2) : 10.5)), 'count'], under, drip, ['Ridge tiles', up((ridge * 1.05) / 0.42), 'count']);
+        } else {
+          rows.push(['Roofing squares', pick(roof, 'Roofing squares'), 'num'], ['Shingle bundles', pick(roof, 'Shingle bundles (3 per square)'), 'count'],
+            under, drip, ['Ridge cap bundles', up(ridge / (25 * FT)), 'count']);
+        }
+        // Outside finish over the wall area, plus 10% for siding (stucco and brick have their own extra).
+        if (v.siding === 3) {
+          const [, face, kg] = MASONRY[m ? 0 : 2], n = up((wallArea / face) * 1.05);
+          mortarKg += n * kg;
+          rows.push(['Bricks for the veneer', n, 'count']);
+        } else if (v.siding === 2) rows.push([renderLabel('outside walls'), render(wallArea), 'count']);
+        else rows.push([v.siding === 1 ? 'Siding: fiber cement' : 'Siding: vinyl', wallArea * 1.1, 'area']);
+        if (block || v.siding === 3) rows.push(mortarBags(mortarKg, sys)); // block walls and brick veneer are laid in mortar
+        // Nails, screws and small items, worked out from the rows above (v.extras). Nails are sold by weight:
+        // 5 lb boxes in the US, by the kilo elsewhere. Counts per lb / kg are for common nails of that size.
+        const misc = rows => {
+          if (!v.extras) return rows;
+          const got = test => rows.filter(r => (typeof test === 'string' ? r[0] === test : test.test(r[0]))).reduce((s, r) => s + r[1], 0);
+          const out = [], sqft = a => a / FT2;
+          const nails = (imp, met, n, perLb, perKg) => out.push(m ? [`Nails: ${imp} (5 lb boxes)`, up(n / perLb / 5), 'count'] : [`Nails: ${met} (kg)`, up(n / perKg), 'count']);
+          // Slab: a tie at every rebar crossing (about 8 in / 20 cm of 16-gauge wire each) and a chair about every 3 ft (0.9 m).
+          const S = 18 * IN, ties = (up(v.L / S) + 1) * (up(v.W / S) + 1), wire = ties * 0.2 * 0.0158;
+          out.push(m ? ['Rebar tie wire (3½ lb coils)', up(wire / (3.5 * LB)), 'count'] : ['Rebar tie wire, 1.6 mm (kg)', up(wire), 'count'],
+            [m ? 'Rebar chairs (2 in)' : 'Rebar chairs (50 mm)', up(v.L / 0.9) * up(v.W / 0.9), 'count']);
+          if (!block) {
+            // Wood walls: anchor bolts every 6 ft (1.8 m) plus the corners; about 6 nails per stud and 12 per plate board.
+            out.push([m ? 'Anchor bolts (½ × 10 in)' : 'Anchor bolts (M12 × 250 mm)', up(P / 1.8) + 4, 'count']);
+            nails('16d framing', '90 mm framing', got(/^Wall studs/) * 6 + got(/^Wall plates/) * 12, 50, 100);
+          }
+          // Sheathing and subfloor: about 50 nails a sheet (6 in apart on the edges, 12 in across the middle).
+          nails('8d sheathing', '65 mm sheathing', (got(/sheathing/i) + got('Subfloor sheets, upper floor')) * 50, 100, 230);
+          if (st > 1) out.push(['Construction adhesive, subfloor (tubes)', up(got('Subfloor sheets, upper floor') / 2), 'count']);
+          out.push(['Hurricane ties (2 per truss)', got('Roof trusses (about 2 ft apart)') * 2, 'count']);
+          // Roof covering: 320 nails a square for shingles; about 8.6 screws per m² (0.8 per sq ft) for metal; one fixing per tile.
+          if (v.roofing === 1) out.push(['Metal roofing screws (bags of 250)', up((roofArea * 8.6) / 250), 'count']);
+          else if (v.roofing === 2) out.push(['Roof tile nails or clips (boxes of 1,000)', up(got('Roof tiles') / 1000), 'count']);
+          else nails('1¼ in roofing', '32 mm roofing', (sqft(roofArea) / 100) * 320, 140, 400);
+          // Outside finish: siding nails about 1½ per sq ft; brick veneer one tie per 2⅔ sq ft (0.25 m²); house wrap under wood walls.
+          if (v.siding === 3) out.push(['Brick ties', up(wallArea / (2.67 * FT2)), 'count']);
+          else if (v.siding !== 2) nails('1½ in galvanized siding', '40 mm galvanized siding', sqft(wallArea) * 1.5, 130, 350);
+          if (!block) out.push(m ? ['House wrap (9 × 100 ft rolls)', up((wallArea * 1.1) / (900 * FT2)), 'count'] : ['House wrap (1.5 × 50 m rolls)', up((wallArea * 1.1) / 75), 'count']);
+          const trim = got(/^Baseboard/), dw = got('Drywall sheets');
+          // Block walls: plugs ("tox") and screws to fix door frames (8), window frames (6) and baseboard (4 a piece) to the block.
+          if (block) out.push(['Wall plugs (tox) with screws (packs of 100)', up(((v.doors + v.idoors + gd) * 8 + v.windows * 6 + trim * 4) / 100), 'count']);
+          if (v.fin) {
+            // Drywall: about 32 screws a sheet; 12 ft (3.6 m) of tape a sheet, and a bucket of joint compound per 13 sheets.
+            out.push(['Drywall screws (boxes of 1,000)', up((dw * 32) / 1000), 'count'], m ? ['Joint compound (4.5 gal buckets)', up(dw / 13), 'count'] : ['Joint compound (20 kg buckets)', up(dw / 13), 'count'],
+              m ? ['Drywall tape (500 ft rolls)', up((dw * 12) / 500), 'count'] : ['Drywall tape (150 m rolls)', up((dw * 3.6) / 150), 'count']);
+            if (!block) nails('2 in finish', '50 mm finish', trim * 12, 300, 900);
+            out.push(['Caulk (tubes)', up(v.doors + gd + v.windows + v.idoors / 2 + trim / 6), 'count']);
+            // Tile grout: about 150 sq ft per 25 lb bag (6 m² per 5 kg) for 12 in (30 cm) tiles with ⅛ in (3 mm) joints.
+            if (v.floor === 1) { const A = got('Flooring: ceramic or porcelain tile'); out.push(m ? ['Tile grout (25 lb bags)', up(sqft(A) / 150), 'count'] : ['Tile grout (5 kg bags)', up(A / 6), 'count']); }
+          }
+          return [...rows, ...out];
+        };
+        if (!v.fin) return misc(rows);
+        // Finished inside, floor by floor. Wood walls: batts in the outside walls (R-13 for 2×4, R-21 for 2×6) and drywall on
+        // every wall face. Block walls: rendered inside instead, with drywall on the ceilings only. All: R-38 blown-in
+        // cellulose in the attic, two coats of paint, flooring and baseboard.
+        const ins = (L, W, type, R) => pick(run('insulation-calculator', { L, W, type, R, cov: 40 * FT2, waste: 0.05 }, sys), 'Bags');
+        const dry = (L, W, H, ceil) => pick(run('drywall-calculator', { L, W, H, ceil, S: sheet, waste: 0.1 }, sys), 'Sheets');
+        const base = (L, W, doors) => pick(run('baseboard-calculator', { L, W, doors, DW: 36 * IN, PL: m ? 8 * FT : 2.4, waste: 0.1 }, sys), 'Pieces');
+        let drywall = 0, trim = 0, paintArea = 0, plaster = 0;
+        for (const f of floors) {
+          const id = inDoors(f), I = inside(f), H = ht(f), od = fp(f) ? fp(f).doors : f ? 0 : v.doors; // garage doors get no baseboard gap or paint deduction
+          const walls = P * H + 2 * I * H - (od + 2 * id) * DOOR - wins(f) * WIN; // inside faces of every wall
+          if (block) { drywall += dry(v.L, v.W, 0, 1); plaster += Math.max(0, walls); }
+          else drywall += dry(v.L, v.W, H, 1) + (I ? dry(I, 0, H, 0) : 0);
+          trim += base(v.L, v.W, od) + (I ? base(I, 0, 2 * id) : 0);
+          paintArea += walls + v.L * v.W;
+        }
+        const paint = run('paint-calculator', { mode: 2, A: Math.max(0, paintArea), coats: 2, cov: 350 * FT2 / GAL }, sys)[2][1];
+        const flooring = v.L * v.W * st * 1.1, R = v.walls === 6 ? 21 : 13;
+        if (!block) rows.push([`Wall insulation bags (R-${R} batts)`, ins(P, Hs, 0, R), 'count']);
+        rows.push(['Attic insulation bags (R-38 blown-in)', ins(v.L, v.W, 2, 38), 'count'], ['Drywall sheets', drywall, 'count']);
+        if (block) rows.push([renderLabel('inside walls'), render(plaster), 'count']);
+        rows.push([m ? '1 gallon cans of paint' : '2.5 L tins of paint', paint, 'count'],
+          [['Flooring: laminate or vinyl plank', 'Flooring: ceramic or porcelain tile', 'Flooring: hardwood', 'Flooring: carpet'][v.floor] || 'Flooring: laminate or vinyl plank', flooring, 'area']);
+        // Thinset under tile: a 50 lb bag covers about 95 sq ft with a ¼ in notched trowel; a 20 kg bag about 5 m².
+        if (v.floor === 1) rows.push(m ? ['Tile adhesive (50 lb bags)', up(flooring / (95 * FT2)), 'count'] : ['Tile adhesive (20 kg bags)', up(flooring / 5), 'count']);
+        rows.push([m ? 'Baseboard (8 ft pieces)' : 'Baseboard (2.4 m pieces)', trim, 'count']);
+        return misc(rows);
+      },
+    },
     {
       slug: 'concrete-calculator', cat: 'concrete', title: 'Concrete Calculator',
       desc: 'Work out how much concrete you need for a slab, patio, footing, round pad or steps, in cubic yards or m³, plus premix bags and ready-mix truck loads.',
@@ -407,6 +592,11 @@
 
   // Short help shown under a field: { slug: { inputId: text } }
   const HINTS = {
+    'house-material-calculator': {
+      I: 'Rough guide: about 1 ft of inside wall for every 9 sq ft of floor (1 m per 3 m²). Enter 0 for one open room.',
+      fin: 'An unfinished shell leaves out insulation, drywall, paint, flooring and baseboard.',
+      walls: 'Block walls count blocks and mortar for every wall. The grout and steel in the block cores are not included.',
+    },
     'concrete-calculator': {
       shape: 'For fence posts and Sonotubes, use the <a href="/concrete-column-calculator/">post hole concrete calculator</a>.',
       T: 'Patios and paths: 4 in (10 cm). Driveways: 5–6 in (13–15 cm). Footings: often 8–12 in (20–30 cm).',
@@ -450,6 +640,36 @@
   const bag = { '80 lb bags': [6.5], '25 kg bags': [, 6] };
   const mortar = { '80 lb bags of mortar mix': [8], '25 kg bags of mortar mix': [, 7] };
   const PRICES = {
+    'house-material-calculator': {
+      'Concrete: ready-mix to order': [165, 215], 'Gravel base under the slab': [50, 65],
+      'Rebar: #4 bars (20 ft)': [13], 'Rebar: 12 mm bars (6 m)': [, 11],
+      'Wall studs (2×4)': [4.5, 4.5], 'Wall studs (2×6)': [7, 7], 'Wall plates (16 ft boards)': [9], 'Wall plates (4.8 m boards)': [, 9],
+      'Floor joists, upper floor (2×10, 16 ft)': [24], 'Floor joists, upper floor (2×10, 4.8 m)': [, 24], 'Subfloor sheets, upper floor': [38, 38],
+      'Roof trusses (about 2 ft apart)': [180, 180],
+      'Sheathing, roof and walls (4 × 8 sheets)': [18], 'Sheathing, roof and walls (1.2 × 2.4 m sheets)': [, 18],
+      'Roof sheathing (4 × 8 sheets)': [18], 'Roof sheathing (1.2 × 2.4 m sheets)': [, 18],
+      'Concrete blocks (16 × 8 in face)': [2.25], 'Concrete blocks (440 × 215 mm face)': [, 2.5], ...mortar,
+      'Metal roofing': [4.5, 48], 'Metal ridge cap (10 ft pieces)': [22], 'Metal ridge cap (3 m pieces)': [, 22], 'Roof tiles': [1.6, 1.6], 'Ridge tiles': [5, 5],
+      'Bricks for the veneer': [0.75, 0.8], 'Stucco or render, outside walls (80 lb bags)': [14], 'Render, outside walls (25 kg bags)': [, 8],
+      'Stucco or render, inside walls (80 lb bags)': [14], 'Render, inside walls (25 kg bags)': [, 8],
+      'Shingle bundles': [38, 38], 'Roof underlayment rolls': [110, 110], 'Drip edge (10 ft pieces)': [9], 'Drip edge (3 m pieces)': [, 9],
+      'Ridge cap bundles': [60, 60], 'Siding: vinyl': [2.5, 27], 'Siding: fiber cement': [3.5, 38],
+      'Wall insulation bags (R-13 batts)': [40, 40], 'Wall insulation bags (R-21 batts)': [55, 55], 'Attic insulation bags (R-38 blown-in)': [15, 15], 'Drywall sheets': [16, 16],
+      '1 gallon cans of paint': [40], '2.5 L tins of paint': [, 35],
+      'Flooring: laminate or vinyl plank': [3.5, 38], 'Flooring: ceramic or porcelain tile': [3.5, 38], 'Flooring: hardwood': [6, 65], 'Flooring: carpet': [3, 32],
+      'Tile adhesive (50 lb bags)': [22], 'Tile adhesive (20 kg bags)': [, 16],
+      // Nails, screws and small items (rough US prices; metric nails per kg)
+      'Rebar tie wire (3½ lb coils)': [8], 'Rebar tie wire, 1.6 mm (kg)': [, 3], 'Rebar chairs (2 in)': [0.35], 'Rebar chairs (50 mm)': [, 0.35],
+      'Anchor bolts (½ × 10 in)': [1.5], 'Anchor bolts (M12 × 250 mm)': [, 1.5], 'Hurricane ties (2 per truss)': [1.2, 1.2],
+      'Nails: 16d framing (5 lb boxes)': [18], 'Nails: 90 mm framing (kg)': [, 3.5], 'Nails: 8d sheathing (5 lb boxes)': [17], 'Nails: 65 mm sheathing (kg)': [, 3.5],
+      'Nails: 1¼ in roofing (5 lb boxes)': [16], 'Nails: 32 mm roofing (kg)': [, 4], 'Nails: 1½ in galvanized siding (5 lb boxes)': [24], 'Nails: 40 mm galvanized siding (kg)': [, 5],
+      'Nails: 2 in finish (5 lb boxes)': [25], 'Nails: 50 mm finish (kg)': [, 5],
+      'Construction adhesive, subfloor (tubes)': [6, 6], 'Metal roofing screws (bags of 250)': [30, 30], 'Roof tile nails or clips (boxes of 1,000)': [40, 40],
+      'Brick ties': [0.3, 0.3], 'House wrap (9 × 100 ft rolls)': [170], 'House wrap (1.5 × 50 m rolls)': [, 90], 'Wall plugs (tox) with screws (packs of 100)': [12, 12],
+      'Drywall screws (boxes of 1,000)': [25, 25], 'Joint compound (4.5 gal buckets)': [18], 'Joint compound (20 kg buckets)': [, 18],
+      'Drywall tape (500 ft rolls)': [6], 'Drywall tape (150 m rolls)': [, 6], 'Caulk (tubes)': [6, 6], 'Tile grout (25 lb bags)': [25], 'Tile grout (5 kg bags)': [, 10],
+      'Baseboard (8 ft pieces)': [14], 'Baseboard (2.4 m pieces)': [, 14],
+    },
     'concrete-calculator': bag,
     'concrete-column-calculator': bag,
     'concrete-block-calculator': { 'Blocks needed': [2.25, 2.5], ...mortar },
@@ -482,6 +702,28 @@
     waste: 'Loose material settles and packs down, so order a little extra.',
   };
   const TIPS = {
+    'house-material-calculator': {
+      L: 'The long side of the building, outside wall to outside wall.',
+      W: 'The short side of the building. The roof ridge runs along the length, so the gables are on these ends.',
+      stories: 'Two stories doubles the walls and adds upper-floor joists and subfloor. The slab and roof stay the same size.',
+      H: 'The height of the walls on the ground floor, usually the ceiling height: 8 or 9 ft (2.4 or 2.7 m).',
+      H2: 'The upper floor can have its own ceiling height, often a little lower than the ground floor.',
+      roofing: 'Shingles are the cheapest. Metal panels last longer and suit low slopes down to about 3/12. Tiles are heavy, so the roof framing must be built for them.',
+      siding: 'Vinyl is the cheapest siding. Fiber cement is tougher and fire-resistant. Stucco or cement render is usual on block walls. Brick veneer is a single layer of brick in front of the wall.',
+      floor: 'Each flooring is worked out over the whole floor plus 10%. Tile adds bags of tile adhesive (thinset) and grout.',
+      extras: 'Nails, screws, wall plugs (tox), rebar ties and chairs, anchor bolts, hurricane ties, house wrap, drywall tape and compound, caulk and grout, worked out from the build.',
+      roof: 'A gable roof has two slopes and triangular end walls. A hip roof slopes on all four sides, so it has no gable walls.',
+      pitch: 'How many inches the roof rises for every 12 in across. Most houses are 4/12 to 8/12.',
+      over: 'How far the roof sticks out past the walls. 12–18 in (30–45 cm) is common.',
+      walls: '2×6 walls are thicker, so they hold more insulation, and many cold-climate codes require them. Concrete block (CMU or hollow block) is common in warm, wet and storm-prone places.',
+      spacing: 'The distance between studs, center to center. 16 in is standard; 24 in uses fewer studs.',
+      I: 'Add up the length of every inside wall, on all floors. Each wall gets studs, drywall on both sides, paint and baseboard.',
+      doors: 'Doors in the outside walls, including the main entry and back door.',
+      gdoors: 'Each garage door is taken out of the siding as a 16 × 7 ft opening.',
+      idoors: 'Doors between rooms, including closets, on all floors.',
+      windows: 'Every window, on all floors. Each one is taken out of the siding and paint as 15 sq ft.',
+      fin: 'Finished adds what makes it livable inside. Pick unfinished for a shed, garage or workshop.',
+    },
     _: {
       L: 'Run a tape along the longest side. For an L-shape, split it into rectangles and add them up.',
       W: 'Measure the other side, at a right angle to the length.',

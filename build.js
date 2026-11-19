@@ -26,6 +26,7 @@ const ogImage = name => `/og/${fs.existsSync(path.join(OG, name + '.png')) ? nam
 
 // Extra words people search for, so "cement" finds the concrete calculators.
 const KEYWORDS = {
+  'house-material-calculator': 'build home cost estimate materials list shed garage cabin whole project construction estimator',
   'concrete-calculator': 'cement slab patio driveway pour ready mix quikrete bags yards',
   'concrete-column-calculator': 'cement post hole footing sonotube pier deck post fence post',
   'concrete-block-calculator': 'cmu cinder block wall foundation masonry',
@@ -62,6 +63,9 @@ const searchForm = id => `<form class="search" role="search" action="/" autocomp
   <button type="submit">Search</button>
   <ul id="r-${id}" class="search-results" hidden></ul>
 </form>`;
+
+// Calculators with an editor script of their own, loaded before calc-ui.js (the house floor plan editor).
+const EDITORS = { 'house-material-calculator': 'house-plan.js' };
 
 function page({ title, desc, url, body, hero = '', calc = false, image = ogImage('home'), ld = '', noindex = false }) {
   const ads = SITE.adsenseClient
@@ -106,7 +110,7 @@ ${body}
 <footer><div class="wrap">
   <nav><a href="/about/">About</a><a href="/contact/">Contact</a><a href="/privacy/">Privacy Policy</a><a href="/terms/">Terms</a></nav>
   <p>© ${year} ${SITE.name}. Results are estimates. Check product labels and local building codes before you buy or build.</p>
-</div></footer>${calc ? '\n<script src="/formulas.js" defer></script>\n<script src="/calc-ui.js" defer></script>' : ''}
+</div></footer>${calc ? `\n<script src="/formulas.js" defer></script>\n<script src="/views.js" defer></script>${EDITORS[calc] ? `\n<script src="/${EDITORS[calc]}" defer></script>` : ''}\n<script src="/calc-ui.js" defer></script>` : ''}
 </body>
 </html>
 `;
@@ -119,7 +123,7 @@ function write(rel, html) {
 }
 
 fs.rmSync(OUT, { recursive: true, force: true });
-for (const f of ['style.css', 'formulas.js', 'calc-ui.js', 'project.js', 'favicon.svg']) write(f, fs.readFileSync(path.join(__dirname, 'src', f)));
+for (const f of ['style.css', 'formulas.js', 'views.js', ...Object.values(EDITORS), 'calc-ui.js', 'project.js', 'favicon.svg']) write(f, fs.readFileSync(path.join(__dirname, 'src', f)));
 if (fs.existsSync(OG)) fs.cpSync(OG, path.join(OUT, 'og'), { recursive: true });
 const index = CALCS.map(c => ({ t: c.title, s: c.slug, h: `${c.title} ${CATS[c.cat]} ${c.desc} ${KEYWORDS[c.slug] || ''}`.toLowerCase() }));
 write('site.js', `var MM_INDEX = ${JSON.stringify(index)};\n${fs.readFileSync(path.join(__dirname, 'src', 'site.js'), 'utf8')}`);
@@ -128,7 +132,9 @@ write('site.js', `var MM_INDEX = ${JSON.stringify(index)};\n${fs.readFileSync(pa
 const urls = ['/'];
 for (const c of CALCS) {
   const content = fs.readFileSync(path.join(__dirname, 'content', c.slug + '.html'), 'utf8');
-  const related = CALCS.filter(o => o.cat === c.cat && o !== c).map(o => `<li><a href="/${o.slug}/">${o.title}</a></li>`).join('');
+  // A calculator can list its own related pages (the house uses many categories); otherwise it links its category.
+  const related = (c.related ? c.related.map(s => CALCS.find(o => o.slug === s)) : CALCS.filter(o => o.cat === c.cat && o !== c))
+    .map(o => `<li><a href="/${o.slug}/">${o.title}</a></li>`).join('');
   const url = `/${c.slug}/`;
   urls.push(url);
   const faqs = FAQS[c.slug];
@@ -140,7 +146,7 @@ for (const c of CALCS) {
     { '@type': 'FAQPage', mainEntity: faqs.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) },
   ] });
   write(`${c.slug}/index.html`, page({
-    title: `${TITLES[c.slug]} | ${SITE.name}`, desc: c.desc, url, calc: true, image: ogImage(c.slug), ld,
+    title: `${TITLES[c.slug]} | ${SITE.name}`, desc: c.desc, url, calc: c.slug, image: ogImage(c.slug), ld,
     body: `<nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/#${c.cat}">${CATS[c.cat]}</a></nav>
 <h1>${c.title}</h1>
 <p class="lede">${c.desc}</p>
@@ -173,9 +179,9 @@ write('index.html', page({
 <h1>Building material calculator</h1>
 <p class="lede">How much material do you need? Free calculators for DIY and contractor jobs. Punch in your measurements in feet and inches (or metric) and get the bags, yards, boards or boxes to buy, with extra for waste.</p>
 ${searchForm('hero')}
-<p class="popular">Popular: ${[['concrete-calculator', 'Concrete'], ['brick-calculator', 'Brick'], ['square-footage-calculator', 'Square feet'], ['flooring-calculator', 'Flooring'], ['topsoil-calculator', 'Topsoil'], ['roofing-calculator', 'Roofing']].map(([s, t]) => `<a href="/${s}/">${t}</a>`).join('')}</p>
+<p class="popular">Popular: ${[['house-material-calculator', 'Whole house'], ['concrete-calculator', 'Concrete'], ['brick-calculator', 'Brick'], ['square-footage-calculator', 'Square feet'], ['flooring-calculator', 'Flooring'], ['topsoil-calculator', 'Topsoil'], ['roofing-calculator', 'Roofing']].map(([s, t]) => `<a href="/${s}/">${t}</a>`).join('')}</p>
 <ul class="facts"><li><b>${CALCS.length}</b> calculators</li><li>Feet &amp; inches or metric</li><li>No sign-up, no email</li></ul>
-<p class="estimator">Estimating a whole job? Press <b>+ Add to project</b> on each calculator, and <a href="/project/">My project</a> turns them into one material list and cost total: a free material estimator for the whole build.</p>
+<p class="estimator">Building something whole? The <a href="/house-material-calculator/">House Material Calculator</a> estimates a shed, garage, cabin or house in one go. For any other job, press <b>+ Add to project</b> on each calculator and <a href="/project/">My project</a> adds them up into one material list and cost total.</p>
 </div></section>`,
   body: `<div id="calculators">${sections}</div>`,
 }));

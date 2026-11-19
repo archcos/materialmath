@@ -1,6 +1,6 @@
 # MaterialMath
 
-Static site with 20 DIY material calculators. No framework, no dependencies. Only Node.js is needed to build it.
+Static site with 28 DIY material calculators. No framework, no dependencies. Only Node.js is needed to build it.
 
 ```
 node test.js     # check every formula
@@ -26,7 +26,9 @@ The site deploys only through GitHub. Every push to `main` makes Cloudflare run 
 4. Submit `https://yourdomain/sitemap.xml` in Google Search Console.
 
 ## Adding a calculator
-1. Add an entry to `CALCS` in `src/formulas.js`.
+1. Add an entry to `CALCS` in `src/formulas.js`. Optional extras:
+   - `show: { fieldId: ['menuId', [values]] }` shows a field only when a menu (such as Shape) has one of those values.
+   - `head: 'Row label'` (or a list of labels) picks the big headline result instead of the first count.
 2. Write its article in `content/<slug>.html`.
 3. Add its "what to measure" picture to `DIAGRAMS` in `src/diagrams.js` (the build stops if one is missing).
 4. Add its Google title and 4 FAQs to `src/seo.js` (the build stops if they are missing).

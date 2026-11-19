@@ -108,6 +108,47 @@ function room() {
     + dim(218, 40, 218, 150, 'Height', 212, 112, -90) + dim(90, 162, 230, 162, 'Width', 160, 177);
 }
 
+function retainingWall() {
+  return bond('block', 40, 60, 240, 100, 40, 20) + rect('slab', 34, 50, 252, 10) + rect('soil', 10, 140, 300, 45) + line('ground', 10, 140, 310, 140)
+    + label(160, 166, 'One course buried') + label(160, 46, 'Cap')
+    + dim(40, 30, 280, 30, 'Length', 160, 22) + dim(296, 50, 296, 140, 'Height', 312, 95, -90);
+}
+
+function rebar() {
+  let s = rect('concrete', 40, 25, 230, 125);
+  for (let x = 52; x < 262; x += 23) s += line('bar', x, 33, x, 142);
+  for (let y = 36; y < 145; y += 23) s += line('bar', 48, y, 262, y);
+  return s + planDims(40, 25, 230, 125, 'Slab length', 'Slab width') + dim(52, 14, 75, 14, 'Spacing', 104, 18);
+}
+
+function cube() {
+  return box('soil', 110, 80, 90, 90, 40, 34) + onTop(110, 80, 90, 40, 34, (x, y) => dot(x, y, 1.6))
+    + label(155, 130, '1 cu yd') + dim(110, 184, 200, 184, '3 ft', 155, 198) + dim(96, 80, 96, 170, '3 ft', 86, 125, -90) + dim(212, 177, 252, 143, '3 ft', 246, 175);
+}
+
+function framing() {
+  let s = rect('wood2', 30, 160, 260, 8) + rect('wood2', 30, 24, 260, 6) + rect('wood2', 30, 30, 260, 6);
+  for (let x = 30; x < 290; x += 32) s += rect('wood', x, 36, 6, 124);
+  s += rect('wood', 284, 36, 6, 124);
+  return s + label(160, 20, 'Double top plate') + dim(33, 186, 65, 186, 'Stud spacing', 49, 199) + dim(306, 24, 306, 168, 'Wall height', 318, 96, -90);
+}
+
+function insulation() {
+  let s = rect('insul', 30, 80, 260, 90);
+  for (let x = 30; x < 290; x += 52) s += rect('wood', x, 120, 8, 50);
+  for (let i = 0; i < 24; i++) s += dot(40 + (i * 37) % 245, 88 + (i * 23) % 70, 1.4);
+  return s + rect('board', 30, 170, 260, 8) + label(160, 192, 'Ceiling')
+    + dim(30, 64, 290, 64, 'Attic length', 160, 56) + dim(304, 80, 304, 170, 'Depth', 318, 125, -90);
+}
+
+function siding() {
+  let s = rect('siding', 60, 90, 200, 80) + poly('siding', [[60, 90], [160, 40], [260, 90]]);
+  for (let y = 98; y < 170; y += 8) s += line('lap', 60, y, 260, y);
+  for (let y = 50; y < 90; y += 8) { const h = (y - 40) * 2; s += line('lap', 160 - h, y, 160 + h, y); }
+  s += rect('door', 145, 132, 30, 38) + rect('glass', 82, 110, 34, 26) + rect('glass', 204, 110, 34, 26) + line('ground', 10, 170, 310, 170);
+  return s + dim(60, 184, 260, 184, 'House length', 160, 198) + dim(276, 90, 276, 170, 'Wall height', 292, 130, -90) + dim(44, 40, 44, 90, 'Gable', 34, 65, -90);
+}
+
 function picked(c, x, y, w, h, bw, bh, stagger, px, py) {
   return bond(c, x, y, w, h, bw, bh, stagger) + `<rect class="pick" x="${px}" y="${py}" width="${bw}" height="${bh}"/>` + planDims(x, y, w, h);
 }
@@ -119,9 +160,18 @@ const DIAGRAMS = {
     + label(197, 34, 'Post') + label(262, 52, 'Ground') + dim(115, 178, 205, 178, 'Diameter', 160, 195) + dim(222, 60, 222, 170, 'Depth', 240, 115, -90),
   'concrete-block-calculator': () => wall('block', 48, 24),
   'brick-calculator': () => wall('brick', 30, 12),
+  'mortar-calculator': () => `<rect class="f m-mortar" x="40" y="40" width="240" height="120"/>` + bond('brick', 40, 40, 240, 120, 30, 12).replace(/(width|height)="([\d.]+)"/g, (m, k, n) => `${k}="${r(n - 2)}"`)
+    + label(160, 30, 'Mortar joints') + dim(40, 176, 280, 176, 'Length', 160, 193) + dim(296, 40, 296, 160, 'Height', 314, 100, -90),
+  'retaining-wall-calculator': retainingWall,
+  'rebar-calculator': rebar,
   'gravel-calculator': () => bed('gravel', (x, y) => dot(x, y, 3)),
   'topsoil-calculator': () => bed('soil', (x, y) => dot(x, y, 1.6)),
   'mulch-calculator': () => bed('mulch', (x, y, i) => line('chip', x - 4, y + (i % 2 ? 2 : -2), x + 4, y - (i % 2 ? 2 : -2))),
+  'sand-calculator': () => bed('sand', (x, y) => dot(x, y, 1.1)),
+  'cubic-yard-calculator': cube,
+  'insulation-calculator': insulation,
+  'framing-calculator': framing,
+  'siding-calculator': siding,
   'paver-calculator': () => picked('paver', 50, 25, 200, 125, 30, 15, 0.5, 125, 40),
   'sod-calculator': () => bond('grass', 50, 25, 200, 125, 50, 25) + planDims(50, 25, 200, 125, 'Lawn length', 'Lawn width'),
   'fence-calculator': fence,

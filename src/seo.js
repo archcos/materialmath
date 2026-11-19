@@ -4,26 +4,34 @@
 const a = (slug, text) => `<a href="/${slug}/">${text}</a>`;
 
 const TITLES = {
-  'concrete-calculator': 'Concrete Calculator: Slab Bags & Cubic Yards',
+  'concrete-calculator': 'Concrete Calculator: Slabs, Footings, Steps & Bags',
   'concrete-column-calculator': 'Post Hole Concrete Calculator (Sonotube & Columns)',
-  'concrete-block-calculator': 'Concrete Block Calculator: CMU & Cinder Blocks',
-  'brick-calculator': 'Brick Calculator: How Many Bricks for a Wall',
+  'concrete-block-calculator': 'Concrete Block Calculator: CMU, Cinder Blocks & Mortar',
+  'mortar-calculator': 'Mortar Calculator: Bags of Mortar for Bricks & Blocks',
+  'retaining-wall-calculator': 'Retaining Wall Calculator: Blocks, Caps & Gravel',
+  'rebar-calculator': 'Rebar Calculator for Slabs: Bars, Length & Weight',
+  'brick-calculator': 'Brick Calculator: Bricks, Mortar & Pallets for a Wall',
   'gravel-calculator': 'Gravel Calculator: Cubic Yards & Tons',
-  'topsoil-calculator': 'Topsoil Calculator: Cubic Yards & Tons',
+  'topsoil-calculator': 'Topsoil Calculator: Cubic Yards, Tons & Bags',
   'mulch-calculator': 'Mulch Calculator: Cubic Yards & Bags',
-  'paver-calculator': 'Paver Calculator: How Many Pavers Do I Need?',
+  'sand-calculator': 'Sand Calculator: Cubic Yards, Tons & Bags',
+  'cubic-yard-calculator': 'Cubic Yard Calculator & Yards to Tons Converter',
+  'paver-calculator': 'Paver Calculator: Pavers, Base Gravel & Sand',
   'sod-calculator': 'Sod Calculator: Square Feet, Pieces & Pallets',
   'fence-calculator': 'Fence Calculator: Posts, Panels & Rails',
-  'paint-calculator': 'Paint Calculator: How Many Gallons for a Room',
+  'paint-calculator': 'Paint Calculator: How Many Gallons for a Room or House',
   'tile-calculator': 'Tile Calculator: Tiles & Boxes Needed',
   'flooring-calculator': 'Flooring Calculator: Laminate, Vinyl & Hardwood',
   'drywall-calculator': 'Drywall Calculator: Sheets & Screws for a Room',
   'baseboard-calculator': 'Baseboard Calculator: Linear Feet & Pieces',
+  'insulation-calculator': 'Insulation Calculator: Bags & R-Value Thickness',
   'deck-calculator': 'Deck Calculator: Deck Boards & Joists',
-  'roofing-calculator': 'Roofing Calculator: Squares & Shingle Bundles',
-  'stair-calculator': 'Stair Calculator: Risers, Treads & Stringers',
+  'roofing-calculator': 'Roofing Calculator: Shingles, Underlayment & Ridge Cap',
+  'stair-calculator': 'Stair Calculator: Risers, Treads, Stringers & Code',
+  'framing-calculator': 'Wall Framing Calculator: Studs & Plates',
+  'siding-calculator': 'Siding Calculator: Squares & Boxes for a House',
   'board-foot-calculator': 'Board Foot Calculator for Lumber',
-  'square-footage-calculator': 'Square Footage Calculator (Sq Ft & m²)',
+  'square-footage-calculator': 'Square Footage Calculator: Sq Ft, Sq Yd & m²',
 };
 
 const FAQS = {
@@ -32,6 +40,25 @@ const FAQS = {
     ['Is it cheaper to use bags or ready-mix concrete?', 'For jobs under about 1 cubic yard, bags are usually cheaper and simpler. Above that, a ready-mix truck usually saves money and a lot of labor. Many suppliers add a short-load fee for small orders, so ask for the full delivered price.'],
     ['Do I need gravel under a concrete slab?', `Most slabs sit on about 4 in of compacted gravel. It drains water away and gives the slab an even, firm base. Use the ${a('gravel-calculator', 'Gravel Calculator')} to work out the base.`],
     ['How long before I can walk or drive on new concrete?', 'You can usually walk on it after 24 to 48 hours and drive a car on it after about 7 days. Concrete reaches its full design strength after about 28 days.'],
+    ['How many yards of concrete do I need for a 24 × 30 slab 4 in thick?', '24 × 30 × (4 ÷ 12) = 240 cu ft, which is 8.9 cubic yards. With 10% extra, order about 9¾ yards. That is one full ready-mix truck.'],
+  ],
+  'mortar-calculator': [
+    ['How many bricks does a bag of mortar lay?', 'Quikrete says an 80 lb bag of mortar mix lays up to 37 standard bricks or 13 standard 8 × 8 × 16 in blocks. In the UK, a 25 kg bag of ready-mixed mortar lays about 20–25 bricks or about 12 blocks.'],
+    ['Should I buy mortar mix or mix my own?', 'Premixed bags are easiest for small jobs: just add water. For a big wall, buying masonry cement (or cement) and sand separately is cheaper. The calculator shows both.'],
+    ['What type of mortar should I use?', 'Type N is the usual choice for above-grade walls, garden walls and veneer. Type S is stronger and is used below grade, for retaining walls and for paving. In the UK, a general-purpose mix of about 1 part cement to 5 parts sand suits most brickwork.'],
+    ['How long can mixed mortar sit before I use it?', 'Use it within about 2 to 2½ hours of mixing. You can add a little water to soften it during that time, but throw away mortar that has started to set.'],
+  ],
+  'retaining-wall-calculator': [
+    ['How deep should the first row of retaining wall blocks be buried?', 'Bury the first course, or about 10% of the wall height if that is more. The blocks sit on a compacted gravel base about 6 in deep.'],
+    ['Do retaining walls need drainage gravel?', 'Yes. About 12 in of clean gravel behind the blocks, with a perforated drain pipe at the bottom, lets water out so pressure does not build up and push the wall over.'],
+    ['How tall can I build a retaining wall myself?', 'Most block makers allow about 3–4 ft without reinforcement. Taller walls, or walls holding back a driveway or slope, usually need geogrid, an engineer and a permit.'],
+    ['Do I glue the cap blocks?', 'Yes. Cap blocks are usually fixed with masonry adhesive so they do not slide off. The wall blocks below are dry-stacked.'],
+  ],
+  'rebar-calculator': [
+    ['What size rebar should I use in a slab?', '#3 (⅜ in) or #4 (½ in) bars, or 10–12 mm, are common for patios, sidewalks and driveways. Footings and structural slabs need the size and spacing on your plans.'],
+    ['How far apart should rebar be in a slab?', 'Usually 12–18 in apart each way, in a grid. Closer spacing makes a stronger slab.'],
+    ['How much should rebar overlap?', 'A common rule is 40 bar diameters, such as 20 in for #4 bar. The calculator adds that overlap wherever a run is longer than one bar.'],
+    ['Where should rebar sit in a slab?', 'Near the middle of the slab thickness, held up on chairs or concrete blocks. Rebar lying on the ground does little.'],
   ],
   'concrete-column-calculator': [
     ['How many bags of concrete do I need per fence post?', 'A 4×4 post in a 10 in wide, 3 ft deep hole needs about 1.4 cu ft of concrete. With 10% extra, that is three 80 lb bags per post.'],
@@ -46,10 +73,10 @@ const FAQS = {
     ['How do I allow for corners and openings?', 'The calculator works from the total wall area, and the waste allowance covers cut blocks. For a wall with many corners, doors or windows, raise the waste to 10%.'],
   ],
   'brick-calculator': [
-    ['How many bricks are in a square foot?', 'US modular bricks laid with ⅜ in mortar joints need about 6.75 bricks per square foot of wall, one brick thick. That is 675 bricks per 100 sq ft.'],
+    ['How many bricks are in a square foot or square metre?', 'US modular bricks laid with ⅜ in mortar joints need about 6.75 bricks per square foot of wall, one brick thick, or 675 per 100 sq ft. UK bricks (215 × 65 mm) with 10 mm joints need about 60 per square metre.'],
+    ['How much mortar do I need per brick?', 'A little over 2 lb of premixed mortar mix per US brick: Quikrete says an 80 lb bag lays up to 37 bricks. A UK brick takes about 1.2 kg, so a 25 kg bag lays about 21, and 1,000 bricks need about 1.2 tonnes of mortar.'],
     ['What is the difference between modular and standard bricks?', 'Modular bricks are 7⅝ in long, so three courses with mortar line up with an 8 in block. Standard bricks are a little longer at 8 in. Check the size printed on the pallet before you calculate.'],
     ['How many bricks come on a pallet?', 'Often around 500, but it varies by maker and brick size, so ask your supplier. Divide the number of bricks you need by the bricks per pallet and round up.'],
-    ['Why should I buy all my bricks at once?', 'Brick color varies between production runs. Buying everything from one batch, with 5–10% extra for breakage and cuts, keeps the wall an even color.'],
   ],
   'gravel-calculator': [
     ['How much does a cubic yard of gravel weigh?', 'Most crushed stone and gravel weighs about 1.4 tons (2,800 lb) per cubic yard. Wet gravel and stone with a lot of fines can weigh more.'],
@@ -58,9 +85,9 @@ const FAQS = {
     ['Should I put landscape fabric under gravel?', 'For paths and patios, yes. Fabric stops the gravel from sinking into the soil and slows weeds. For driveways, a thick base of compacted crushed stone matters more.'],
   ],
   'topsoil-calculator': [
-    ['How much does a cubic yard of topsoil weigh?', 'Dry topsoil weighs roughly 1 to 1.2 tons per cubic yard. Wet soil can weigh noticeably more.'],
-    ['How many bags of topsoil make a cubic yard?', 'A cubic yard is 27 cu ft. That is 36 bags of 0.75 cu ft, or 27 bags of 1 cu ft. For more than a yard or two, bulk delivery is usually cheaper.'],
-    ['What is the difference between topsoil and garden soil?', 'Topsoil is screened soil for filling low spots, leveling and new lawns. Garden soil and raised bed mix have compost and other material added, which makes them better for growing vegetables and flowers.'],
+    ['How many tons is a yard of topsoil?', 'Dry topsoil weighs roughly 1 to 1.2 tons per cubic yard, so 2 yards weigh about 2.2 tons. Wet soil can weigh noticeably more.'],
+    ['How many bags of topsoil make a cubic yard?', 'A cubic yard is 27 cu ft. That is 36 bags of 0.75 cu ft (the common 40 lb bag), or 27 bags of 1 cu ft. For more than a yard or two, bulk delivery is usually cheaper.'],
+    ['How much area does a ton of topsoil cover?', 'About 74 sq ft at 4 in deep, or 148 sq ft at 2 in. In metric, a tonne covers about 7.7 m² at 10 cm deep.'],
     ['How much does topsoil settle?', 'Loose soil settles as rain and watering pack it down, often by 10–20%. Add a little extra so the finished level ends up where you want it.'],
   ],
   'mulch-calculator': [
@@ -69,9 +96,22 @@ const FAQS = {
     ['Should I remove old mulch before adding new?', 'Usually not. If the old layer is thin, just top it up to 2–3 in in total. If it is already deep, loosen it or rake some out. Keep mulch a few inches away from tree trunks and stems.'],
     ['Is bulk mulch cheaper than bags?', 'Above two or three cubic yards, bulk is usually cheaper even with a delivery fee. Bags are easier for small beds and fit in any vehicle.'],
   ],
+  'sand-calculator': [
+    ['How much does a cubic yard of sand weigh?', 'Dry sand weighs about 2,700 lb, or 1.35 tons, per cubic yard (about 1.6 tonnes per m³). Wet sand weighs more.'],
+    ['How many bags of sand make a cubic yard?', 'A cubic yard is 27 cu ft, so it takes 54 bags of 0.5 cu ft (the common 50 lb bag).'],
+    ['What kind of sand goes under pavers?', `Coarse concrete sand, about 1 in deep, over a compacted gravel base. The ${a('paver-calculator', 'Paver Calculator')} works out the pavers, base and sand together.`],
+    ['What sand should I use for a sandbox?', 'Washed play sand, which is screened and cleaned. A sandbox is usually filled 6–12 in deep.'],
+  ],
+  'cubic-yard-calculator': [
+    ['How do I calculate cubic yards?', 'Multiply length × width × depth in feet to get cubic feet, then divide by 27. For example, 10 × 10 ft at 4 in deep is 33.3 cu ft, or 1.23 cubic yards.'],
+    ['How many tons are in a yard of gravel?', 'About 1.4 tons per cubic yard for crushed stone and most gravel. Topsoil is about 1.1 tons, sand about 1.35 tons, and mulch only about 0.3 tons.'],
+    ['How much does a cubic yard of soil weigh?', 'Dry topsoil or dirt weighs about 2,200 lb (1.1 tons) per cubic yard. Wet soil can weigh 3,000 lb or more.'],
+    ['How do I convert tons to cubic yards?', 'Divide the tons by the weight of one cubic yard of that material. For gravel at 1.4 tons per yard, 10 tons is about 7.1 yards.'],
+  ],
   'paver-calculator': [
     ['How many pavers are in a square foot?', 'For 4 × 8 in pavers, about 4.5 per square foot. For 6 × 6 in pavers, 4 per square foot. For 12 × 12 in pavers, 1 per square foot.'],
-    ['What base goes under pavers?', `Patios and walkways usually get 4–6 in of compacted gravel and then about 1 in of bedding sand. Driveways need a thicker base. Use the ${a('gravel-calculator', 'Gravel Calculator')} to work out the base.`],
+    ['What base goes under pavers?', 'Patios and walkways usually get 4–6 in of compacted gravel and then about 1 in of bedding sand. Driveways need 6–8 in of gravel. The calculator works out both.'],
+    ['How many pavers do I need for a 10 × 10 patio?', 'A 10 × 10 ft patio is 100 sq ft. With 4 × 8 in pavers at 4.5 per sq ft, that is 450 pavers, or about 473 with 5% extra for cuts.'],
     ['Do pavers need edge restraints?', 'Yes. Plastic or metal edging, or a concrete border, stops the pavers from spreading apart at the edges over time.'],
     ['Are pavers better than a concrete patio?', 'Pavers usually cost more up front. They do not crack as one slab, and you can lift and relay a few if the ground settles. A poured concrete patio is cheaper per square foot but is harder to repair.'],
   ],
@@ -91,6 +131,7 @@ const FAQS = {
     ['How much area does a gallon of paint cover?', 'About 350–400 sq ft per coat on smooth, primed walls. Rough, porous or bare surfaces soak up more paint, so you get less coverage.'],
     ['Do I need primer?', 'Yes for bare drywall, patched spots, stains and big color changes. Paint-and-primer products help with color changes, but they do not replace a real primer on new drywall.'],
     ['How much paint do I need for a 12 × 12 room?', 'With 8 ft walls, one door and two windows, there is about 334 sq ft of wall. Two coats need about 2 gallons.'],
+    ['How many gallons of paint do I need for the outside of a house?', 'A 40 × 30 ft house with 9 ft walls, 2 doors and 8 windows has about 1,100 sq ft of siding. At 300 sq ft per gallon, two coats take about 7½ gallons, so buy 8. Add the gable ends if you have them.'],
     ['Should I buy single gallons or a 5-gallon bucket?', 'If you need 4 gallons or more, a 5-gallon bucket is usually cheaper per gallon, and all the paint is one even color.'],
   ],
   'tile-calculator': [
@@ -117,6 +158,12 @@ const FAQS = {
     ['Should I cope or miter inside corners?', 'Coped inside corners stay tight even when walls are not square or the house moves. Outside corners are mitered at 45°.'],
     ['How do I calculate baseboard for several rooms?', 'Run the calculator for each room and add the pieces together. Buying longer pieces means fewer joints.'],
   ],
+  'insulation-calculator': [
+    ['What R-value do I need in my attic?', 'The US Department of Energy recommends R-30 to R-60 for attics, depending on your climate: about R-30 to R-49 in warm southern areas and R-49 to R-60 in cold northern ones. Check your local energy code.'],
+    ['How thick is R-38 insulation?', 'About 12 in of fiberglass batts, about 15 in of blown-in fiberglass, or about 10½ in of blown-in cellulose.'],
+    ['Is blown-in or batt insulation better for an attic?', 'Blown-in fills gaps around wires and odd framing better and is quick to add on top of old insulation. Batts are easier to handle in walls and open joists.'],
+    ['Can I add new insulation on top of old?', 'Usually yes, if the old insulation is dry and not moldy. Lay new batts across the joists without a vapor barrier, or blow loose fill over the top.'],
+  ],
   'deck-calculator': [
     ['How much gap should I leave between deck boards?', 'About ⅛ in for dry wood. Wet pressure-treated boards are often laid tight because they shrink as they dry. For composite, follow the manufacturer\'s spacing.'],
     ['How many deck screws do I need?', 'Two screws wherever a board crosses a joist. For 5½ in boards on joists 16 in apart, that is roughly 350–400 screws per 100 sq ft.'],
@@ -134,6 +181,19 @@ const FAQS = {
     ['What lumber should I use for stringers?', 'Use 2 × 12 boards. After the notches are cut, there should still be at least 3½ in of solid wood below them.'],
     ['Why is there one fewer tread than risers?', 'The upper floor serves as the top step, so it does not need a tread of its own.'],
     ['Do deck stairs follow the same rules?', 'Yes. The same riser and tread limits apply outdoors, and a handrail is required once the stairs have four or more risers.'],
+    ['What is the standard height of a stair step?', 'In US homes, risers can be up to 7¾ in tall with treads at least 10 in deep. About 7 to 7½ in is most comfortable. In the UK, the limit is 220 mm for private stairs.'],
+  ],
+  'framing-calculator': [
+    ['How many studs do I need per foot of wall?', 'At 16 in spacing, a rough rule is one stud per foot of wall. That covers the extra studs at corners, openings and intersections.'],
+    ['Should studs be 16 or 24 inches apart?', '16 in on center is standard for most walls. 24 in can be used for some non-load-bearing and advanced-framing walls, if your code allows it and the drywall is thick enough.'],
+    ['Do I need a double top plate?', 'Load-bearing walls usually do, because it spreads the load and ties walls together at corners. Many interior partition walls use a single top plate.'],
+    ['How many studs does a door or window opening need?', 'Each side gets a king stud and a jack stud, plus a header across the top and cripple studs above or below. The calculator adds 2 studs per opening, so add the jacks and cripples for wide openings.'],
+  ],
+  'siding-calculator': [
+    ['What is a square of siding?', 'A square is 100 sq ft of wall. Vinyl siding is usually sold in boxes of 2 squares (200 sq ft).'],
+    ['How do I measure a gable end for siding?', 'Measure the width of the wall and the height from the top of the wall to the peak. The triangle is width × height ÷ 2.'],
+    ['How much extra siding should I buy?', 'About 10% for a simple house and 15% for one with many corners, gables or dormers.'],
+    ['Do I subtract windows and doors?', 'Yes, but small openings save little material because of the cutting around them. The calculator takes out 20 sq ft per door and 15 sq ft per window.'],
   ],
   'board-foot-calculator': [
     ['How many board feet are in a 2 × 4 × 8?', 'Using nominal sizes, 2 × 4 × 8 ÷ 12 = 5.33 board feet.'],
@@ -144,7 +204,8 @@ const FAQS = {
   'square-footage-calculator': [
     ['How many square feet is a 12 × 12 room?', '12 × 12 = 144 sq ft.'],
     ['How do I convert square feet to square yards?', 'Divide by 9, because a square yard is 3 ft × 3 ft. Carpet is often priced by the square yard.'],
-    ['How do I convert square feet to square meters?', 'Multiply by 0.0929. For example, 144 sq ft is about 13.4 m².'],
+    ['How do I convert square feet to square meters?', 'Multiply by 0.0929. For example, 144 sq ft is about 13.4 m². To go from metres, a 6 m × 12 m space is 72 m², or about 775 sq ft.'],
+    ['How do I calculate square feet from length, width and height?', 'Floor area uses only length × width. Height matters for walls: add up the lengths of the walls and multiply by the height. For a 12 × 15 room with 8 ft walls, that is (12 + 15 + 12 + 15) × 8 = 432 sq ft of wall.'],
     ['Does a home\'s square footage include the garage?', 'Usually not. In US listings, square footage normally counts finished, heated living space and leaves out garages, unfinished basements and porches.'],
   ],
 };

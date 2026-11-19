@@ -23,6 +23,10 @@
   const fu = {}; // unit picked per box; missing = the system's usual unit
   const opt = (id, k) => INPUT_UNITS[k] && (INPUT_UNITS[k][sys].find(u => u[0] === fu[id]) || INPUT_UNITS[k][sys][0]);
   const ftIn = (id, k) => !!(opt(id, k) || [])[2]; // feet boxes get a second box for inches
+  // C.show = { inputId: [selectId, [option values that show it]] }: a field only some choices need (Shape: Round shows Diameter).
+  // Hidden fields count as 0 and are left out of the copied text and the project.
+  const visible = id => !(C.show && C.show[id]) || C.show[id][1].includes(Number(f(C.show[id][0]).value));
+  const shownInputs = () => C.inputs.filter(([id]) => visible(id));
 
   // The "?" shows the tip on hover, tap or keyboard focus; the input is also described by it for screen readers.
   const field = ([id, label, kind, def, opts]) => `<div class="field"><div class="lab"><label for="f-${id}">${label}</label>${
@@ -72,7 +76,7 @@
     const item = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       slug: C.slug, title: C.title,
-      inputs: C.inputs.map(([id, label, k]) => [label, shown(id, k)]),
+      inputs: shownInputs().map(([id, label, k]) => [label, shown(id, k)]),
       rows: rows.map(([l, b, k]) => [l, fmt(b, k)]),
       costs: lines.map(([label, qtyText, price, cost], n) => {
         const k = priced[n][1], b = rows.find(r => r[0] === label)[1];
@@ -231,13 +235,17 @@
   function update() {
     const v = {};
     for (const [id, , k] of C.inputs) {
+      const on = visible(id);
+      f(id).closest('.field').hidden = !on;
+      if (!on) { v[id] = 0; continue; }
       v[id] = read(id, k);
       if (!(v[id] >= 0)) return invalid('Enter a number (0 or more) in every field.');
     }
     rows = C.compute(v, sys);
     // a 0 in a size or spacing we divide by gives Infinity, NaN or negative counts (stair rise 0 -> -1 treads)
     if (rows.some(r => !(r[1] >= 0 && isFinite(r[1])))) return invalid('Check your numbers: a size, spacing or height can\'t be 0.');
-    const main = rows.find(r => r[2] === 'count') || rows[0]; // the headline is the first "buy this many" row
+    // the headline is the calculator's chosen row, else the first "buy this many" row
+    const main = rows.find(r => [].concat(C.head || []).includes(r[0])) || rows.find(r => r[2] === 'count') || rows[0];
     head.innerHTML = `<span class="big">${fmt(main[1], main[2])}</span><span>${main[0]}</span>`;
     out.innerHTML = '<table>' + rows.map(([l, b, k]) => `<tr><th scope="row">${l}</th><td>${fmt(b, k)}</td></tr>`).join('') + '</table>';
     copy.disabled = add.disabled = false;
@@ -273,7 +281,7 @@
     if (!rows) return;
     const { lines, total } = updateCosts();
     const costText = lines.length ? ['', 'Cost estimate:', ...lines.map(([l, q, p, c]) => `${l}: ${q}${p >= 0 ? ` × ${money(p)}` : ''} = ${c >= 0 ? money(c) : '—'}`), ...(total >= 0 ? [`Estimated total: ${money(total)}`] : [])] : [];
-    const text = [C.title, '', ...C.inputs.map(([id, label, k]) => `${label}: ${shown(id, k)}`), '', ...rows.map(([l, b, k]) => `${l}: ${fmt(b, k)}`), ...costText, '', location.href].join('\n');
+    const text = [C.title, '', ...shownInputs().map(([id, label, k]) => `${label}: ${shown(id, k)}`), '', ...rows.map(([l, b, k]) => `${l}: ${fmt(b, k)}`), ...costText, '', location.href].join('\n');
     const ok = await MMCopy(text);
     copy.textContent = ok ? 'Copied!' : 'Could not copy';
     setTimeout(() => (copy.textContent = 'Copy results'), 2000);

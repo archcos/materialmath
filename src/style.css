@@ -101,6 +101,9 @@ h2 { font-size: 1.5rem; line-height: 1.25; margin: 2.2rem 0 .6rem; }
 .facts { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 6px 26px; color: var(--on-steel-muted); font: 500 .95rem var(--head); text-transform: uppercase; letter-spacing: .06em; }
 .facts li::before { content: "■ "; color: var(--hazard); }
 .facts b { color: var(--on-steel); }
+.estimator { margin: 14px 0 0; max-width: 62ch; color: var(--on-steel-muted); font-size: .95rem; }
+.estimator a { color: var(--hot); }
+.estimator b { color: var(--on-steel); }
 
 /* Home cards */
 #calculators section h2 { text-transform: uppercase; border-left: 6px solid var(--hot); padding-left: 12px; margin-top: 2.6rem; }
@@ -196,6 +199,9 @@ h2 { font-size: 1.5rem; line-height: 1.25; margin: 2.2rem 0 .6rem; }
 .dg .m-paver { fill: #ad9f8e; } .dg .m-tile { fill: #ece7dd; } .dg .m-board { fill: #f1eee6; } .dg .m-floor { fill: #e0c49c; }
 .dg .m-wall { fill: #ece6dc; } .dg .m-ceil { fill: #f6f3ee; } .dg .m-roof { fill: #4b5157; } .dg .m-door { fill: #8b5a32; }
 .dg .m-glass { fill: #a5cbe0; } .dg .m-slab { fill: #9da1a5; }
+.dg .m-sand { fill: #d8bf8a; } .dg .m-mortar { fill: #d9d4c7; } .dg .m-insul { fill: #efb4c2; } .dg .m-siding { fill: #a9bfcf; }
+.dg .bar { stroke: #4f5961; stroke-width: 3; stroke-linecap: round; }
+.dg .lap { stroke: rgba(0, 0, 0, .2); stroke-width: 1.2; }
 .dg .dot { fill: rgba(0, 0, 0, .38); }
 .dg .chip { stroke: #4e3119; stroke-width: 2.5; stroke-linecap: round; }
 .dg .ground { stroke: var(--muted); stroke-width: 2; }

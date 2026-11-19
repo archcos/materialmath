@@ -29,9 +29,17 @@ const KEYWORDS = {
   'concrete-calculator': 'cement slab patio driveway pour ready mix quikrete bags yards',
   'concrete-column-calculator': 'cement post hole footing sonotube pier deck post fence post',
   'concrete-block-calculator': 'cmu cinder block wall foundation masonry',
-  'brick-calculator': 'masonry wall mortar',
+  'brick-calculator': 'masonry wall mortar pallet',
+  'mortar-calculator': 'brick block masonry cement sand bags type n type s',
+  'retaining-wall-calculator': 'garden wall landscape blocks cap stones drainage segmental',
+  'rebar-calculator': 'reinforcing steel bar slab grid footing',
+  'sand-calculator': 'paver base play sandbox bags yards tons',
+  'cubic-yard-calculator': 'yards to tons convert volume dirt soil gravel cubic feet',
+  'insulation-calculator': 'attic batts blown in cellulose fiberglass r-value',
+  'framing-calculator': 'studs plates wall 2x4 lumber',
+  'siding-calculator': 'vinyl hardie squares exterior house cladding',
   'gravel-calculator': 'stone rock crushed driveway base yards tons',
-  'topsoil-calculator': 'dirt soil fill garden lawn yards',
+  'topsoil-calculator': 'dirt soil fill garden lawn yards tons bags',
   'mulch-calculator': 'bark garden bed landscaping yards bags',
   'paver-calculator': 'patio walkway stone brick hardscape',
   'sod-calculator': 'grass lawn turf rolls pallets',
@@ -156,17 +164,18 @@ const sections = Object.entries(CATS).map(([key, name]) => `<section id="${key}"
 <ul class="cards">${CALCS.filter(c => c.cat === key).map(c => `<li><a href="/${c.slug}/"><span class="thumb">${diagram(c.slug)}</span><strong>${c.title}</strong><span class="desc">${c.desc}</span></a></li>`).join('')}</ul>
 </section>`).join('\n');
 write('index.html', page({
-  title: `Free Construction & DIY Material Calculators | ${SITE.name}`,
-  desc: 'Free calculators that tell you how much concrete, gravel, paint, tile, drywall, decking and other materials to buy for your project.',
+  title: `Building Material Calculator: Free Construction Estimators | ${SITE.name}`,
+  desc: 'Free building material calculators that tell you how much concrete, brick, gravel, paint, flooring, roofing, lumber and other materials to buy, with cost estimates.',
   url: '/',
   ld: ldJson({ '@type': 'WebSite', name: SITE.name, url: SITE.url + '/', description: 'Free construction and DIY material calculators.' }),
   hero: `<section class="hero"><div class="wrap">
 <p class="eyebrow">Measure once. Buy right.</p>
-<h1>How much material do you need?</h1>
-<p class="lede">Free calculators for DIY and contractor jobs. Punch in your measurements in feet and inches (or metric) and get the bags, yards, boards or boxes to buy, with extra for waste.</p>
+<h1>Building material calculator</h1>
+<p class="lede">How much material do you need? Free calculators for DIY and contractor jobs. Punch in your measurements in feet and inches (or metric) and get the bags, yards, boards or boxes to buy, with extra for waste.</p>
 ${searchForm('hero')}
-<p class="popular">Popular: ${[['concrete-calculator', 'Concrete'], ['gravel-calculator', 'Gravel'], ['deck-calculator', 'Deck boards'], ['fence-calculator', 'Fence'], ['roofing-calculator', 'Roofing']].map(([s, t]) => `<a href="/${s}/">${t}</a>`).join('')}</p>
+<p class="popular">Popular: ${[['concrete-calculator', 'Concrete'], ['brick-calculator', 'Brick'], ['square-footage-calculator', 'Square feet'], ['flooring-calculator', 'Flooring'], ['topsoil-calculator', 'Topsoil'], ['roofing-calculator', 'Roofing']].map(([s, t]) => `<a href="/${s}/">${t}</a>`).join('')}</p>
 <ul class="facts"><li><b>${CALCS.length}</b> calculators</li><li>Feet &amp; inches or metric</li><li>No sign-up, no email</li></ul>
+<p class="estimator">Estimating a whole job? Press <b>+ Add to project</b> on each calculator, and <a href="/project/">My project</a> turns them into one material list and cost total: a free material estimator for the whole build.</p>
 </div></section>`,
   body: `<div id="calculators">${sections}</div>`,
 }));

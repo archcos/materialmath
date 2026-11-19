@@ -56,5 +56,6 @@ function shoot(name, html) {
 
 shoot('home', card('How much material do you need?', `${CALCS.length} free calculators · feet &amp; inches`, diagram('concrete-calculator')));
 for (const c of CALCS) shoot(c.slug, card(c.title, `Free calculator · ${c.prices ? 'with cost estimate' : 'feet &amp; inches'}`, diagram(c.slug)));
-fs.rmSync(tmp, { recursive: true, force: true });
+// Edge can keep its temp profiles locked for a moment after the last shot; the images are done, so a failed cleanup is not an error.
+try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 }); } catch (e) { console.log(`  (could not remove ${tmp}; Windows will clear it later)`); }
 console.log(`Made ${CALCS.length + 1} share images in src/og/. Run node build.js to copy them into dist/.`);

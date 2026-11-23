@@ -233,7 +233,8 @@
   function fmt(b, k) {
     if (!isFinite(b)) return '—';
     if (k === 'count') return b.toLocaleString('en-US');
-    return fromBase(k, b).toLocaleString('en-US', { maximumFractionDigits: 2 }) + (U[k] ? ' ' + unit(k) : '');
+    if (k === 'cut' && sys === 'imp') return MM.frac(b / IN) + ' in'; // shop sizes read off a tape: 2 5/16 in
+    return fromBase(k, b).toLocaleString('en-US', { maximumFractionDigits: k === 'cut' ? 1 : 2 }) + (U[k] ? ' ' + unit(k) : ''); // cut sizes in mm to a tenth
   }
 
   function invalid(msg) {
@@ -381,7 +382,7 @@
     if (!vbox || !lastV || tab === 'pic') return;
     try {
       const sc = new MMViews.Scene();
-      VIEW(lastV, sc, { len: b => fmt(b, 'len'), ...(ED ? ED.view() : {}) });
+      VIEW(lastV, sc, { len: b => fmt(b, 'len'), cut: b => fmt(b, 'cut'), sys, ...(ED ? ED.view() : {}) });
       roofBtn.hidden = !(tab === '3d' && sc.hasRoof && !cam.ground);
       upperBtn.hidden = !(tab === '3d' && sc.floors > 1);
       const body = tab === '3d' ? MMViews.render3d(sc, cam) : MMViews.renderPlan(sc);

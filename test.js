@@ -1,7 +1,7 @@
 // Checks every formula against a hand-worked answer (the same examples the articles use). Run: node test.js
 const assert = require('assert');
 const fs = require('fs');
-const { CALCS, UNITS } = require('./src/formulas.js');
+const { CALCS, UNITS, frac: MMfrac } = require('./src/formulas.js');
 
 const FT = 0.3048, IN = 0.0254, FT2 = FT * FT, FT3 = FT2 * FT, YD3 = 27 * FT3, GAL = 0.003785411784;
 const ft = x => x * FT, inch = x => x * IN;
@@ -94,6 +94,43 @@ near(get('stair-calculator', stairs, 'Riser height') / IN, 7.714, 'riser height'
 near(get('stair-calculator', stairs, 'Stringer length') / IN, 169.0, 'stringer');
 
 near(get('board-foot-calculator', { T: inch(2), W: inch(6), L: ft(8), N: 10 }, 'Board feet'), 80, 'board feet');
+
+// Wood joints in a 1×4 (¾ × 3½ in), as in the article. Joint menu positions: 0 butt … 7 mortise and tenon … 10 miter.
+const JC = CALCS.find(c => c.slug === 'wood-joint-calculator'), joint = (j, x = {}, sys = 'imp') => Object.fromEntries(JC.compute({ joint: j, T: inch(0.75), W: inch(3.5), sides: 4, ...x }, sys));
+const mt = joint(7);
+near(mt['Tenon thickness'] / IN, 0.25, 'tenon ⅓ of ¾ in');
+near(mt['Tenon width'] / IN, 3, 'tenon width');
+near(mt['Mortise depth'] / IN, 7 / 3 + 1 / 16, 'mortise depth');
+near(joint(7, {}, 'met')['Tenon thickness'], 0.006, '18 mm stock takes a 6 mm tenon');
+near(joint(2)['Dowel diameter'] / IN, 0.375, 'dowel ½ of ¾ in');
+assert.strictEqual(joint(2)['Dowels per joint'], 2);
+near(joint(1)['Pocket screw length'] / IN, 1.25, 'Kreg: 1¼ in screws for ¾ in stock');
+near(joint(1, { T: inch(1.5) })['Pocket screw length'] / IN, 2.5, 'Kreg: 2½ in screws for 1½ in stock');
+assert.strictEqual(joint(3)['Biscuit size (#0, #10 or #20)'], 20);
+near(joint(4)['Dado depth (⅓ of the board)'] / IN, 0.25, 'dado depth');
+assert.strictEqual(joint(8)['Fingers across the joint (both boards)'], 9); // 3½ ÷ ⅜ = 9.3, nearest odd 9
+near(joint(8)['Board width for full fingers at both edges'] / IN, 3.375, 'box joint width');
+near(joint(9)['Angle for hardwood (1:8 slope, degrees)'], 7.125, 'dovetail 1:8');
+near(joint(10)['Saw angle (degrees from square)'], 45, 'square frame miter');
+near(joint(10, { sides: 8 })['Saw angle (degrees from square)'], 22.5, 'octagon miter');
+near(joint(10)['Long point minus short point'] / IN, 7, 'miter long point');
+// Every joint's first row is its headline, so the big number on the page is the right one.
+JC.inputs[0][4].forEach(([, j]) => assert(JC.head.includes(JC.compute({ joint: j, T: inch(0.75), W: inch(3.5), sides: 4 }, 'imp')[0][0]), `joint ${j}: first row is not in head`));
+assert.strictEqual(MMfrac(2.3125), '2 5/16');
+assert.strictEqual(MMfrac(0.75), '3/4');
+assert.strictEqual(MMfrac(4), '4');
+
+// Cut list: the bookshelf from the article. Longest first; two 46 in sides share a board; ⅛ in kerf, ½ in trim.
+const shelf = { SL: ft(8), kerf: inch(0.125), trim: inch(0.5), A: inch(46), nA: 2, B: inch(30), nB: 4, C: inch(32), nC: 1, D: inch(28.5), nD: 1, waste: 0.1 };
+assert.strictEqual(get('cut-list-calculator', shelf, 'Boards the cuts fit on'), 3);
+assert.strictEqual(get('cut-list-calculator', shelf, 'Boards to buy'), 4);
+near(get('cut-list-calculator', shelf, 'Offcuts left over') / IN, 13, 'offcuts');
+near(get('cut-list-calculator', shelf, 'Lost to saw kerf') / IN, 1, 'kerf');
+// 47¾ in sides no longer share a board (95⅝ in > 95½ in), so 4 boards, though the lengths add up to under 3.
+assert.strictEqual(get('cut-list-calculator', { ...shelf, A: inch(47.75) }, 'Boards the cuts fit on'), 4);
+// A piece that exactly fills a board needs no kerf after it; one too long is reported, not counted.
+assert.strictEqual(get('cut-list-calculator', { ...shelf, trim: 0, A: ft(8), nA: 2, nB: 0, nC: 0, nD: 0 }, 'Boards the cuts fit on'), 2);
+assert.strictEqual(get('cut-list-calculator', { ...shelf, A: ft(9), nA: 1, nB: 0, nC: 0, nD: 0 }, 'Pieces longer than the board (not counted)'), 1);
 const sqft = { shape: 0, L: ft(12), W: ft(15), L2: ft(8), W2: ft(6), D: ft(10), B: ft(10), TH: ft(8) };
 near(get('square-footage-calculator', sqft, 'Area') / FT2, 180, 'square feet');
 near(get('square-footage-calculator', sqft, 'Area in square yards'), 20, 'square yards');

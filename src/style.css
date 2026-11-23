@@ -139,6 +139,10 @@ h2 { font-size: 1.5rem; line-height: 1.25; margin: 2.2rem 0 .6rem; }
 .vbox .pl-t.mu { fill: #9ec2ee; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .vbox .pl-d line { stroke: #ffd27a; stroke-width: 1; }
 .vbox .pl-d text { fill: #ffd27a; font: 600 10.5px var(--head); }
+/* Sizes in the 3D view: theme orange, with a halo of the background so they read over the wood. */
+.vbox .d3 line { stroke: var(--accent); stroke-width: 1; }
+.vbox .d3 .ext { stroke-opacity: .5; }
+.vbox .d3 text { fill: var(--accent); font: 600 10.5px var(--head); stroke: var(--thumb); stroke-width: 3px; stroke-linejoin: round; paint-order: stroke; }
 .vtools { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: var(--surface); border-top: 1px solid var(--line); }
 .vtools[hidden], .vtools button[hidden] { display: none; }
 .vtools button { position: relative; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--fg); font: 500 .85rem var(--head); padding: 3px 12px; cursor: pointer; }

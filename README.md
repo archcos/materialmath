@@ -1,6 +1,6 @@
 # MaterialMath
 
-Static site with 28 DIY material calculators. No framework, no dependencies. Only Node.js is needed to build it.
+Static site with 31 DIY material calculators. No framework, no dependencies. Only Node.js is needed to build it.
 
 ```
 node test.js     # check every formula

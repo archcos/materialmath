@@ -32,6 +32,8 @@ const TITLES = {
   'framing-calculator': 'Wall Framing Calculator: Studs & Plates',
   'siding-calculator': 'Siding Calculator: Squares & Boxes for a House',
   'board-foot-calculator': 'Board Foot Calculator for Lumber',
+  'wood-joint-calculator': 'Wood Joint Calculator: Mortise & Tenon, Dado, Dovetail Sizes',
+  'cut-list-calculator': 'Cut List Calculator: Boards to Buy & Cutting Plan',
   'square-footage-calculator': 'Square Footage Calculator: Sq Ft, Sq Yd & m²',
 };
 
@@ -207,6 +209,18 @@ const FAQS = {
     ['Why is hardwood sold by the board foot?', 'Rough hardwood comes in random widths and lengths, so pricing by volume is fairer. Softwood framing lumber is usually sold by the piece.'],
     ['What does 4/4 or 8/4 mean?', 'Hardwood thickness is measured in quarters of an inch. 4/4 ("four quarter") is 1 in thick rough, and 8/4 is 2 in.'],
     ['What is the difference between a board foot and a linear foot?', 'A linear foot is just length. A board foot is a volume: 144 cubic inches, such as a board 1 in thick, 12 in wide and 12 in long.'],
+  ],
+  'wood-joint-calculator': [
+    ['What is the strongest wood joint?', 'For frames, chairs and tables, a glued mortise and tenon is the classic strong joint. For box and drawer corners, dovetails and box joints are strongest because they have lots of glue surface and lock together. A plain butt joint is the weakest.'],
+    ['How thick should a tenon be?', 'About one third of the board\'s thickness, rounded to the chisel or router bit you will cut the mortise with. For ¾ in stock that is ¼ in; for 1½ in stock, ½ in. In metric, 18 mm stock takes a 6 mm tenon.'],
+    ['How deep should a dado be?', 'About one third of the thickness of the board it is cut into: ¼ in deep in ¾ in plywood or solid wood. Make it as wide as the shelf is thick, and measure the shelf, because plywood is often a little thinner than its label.'],
+    ['What is the easiest strong joint for a beginner?', `Pocket screws are the quickest: a jig drills the angled hole and the screw pulls the joint tight while the glue dries, so you need no clamps. Dowels and dados are the next step up. Plan the boards with the ${a('cut-list-calculator', 'Cut List Calculator')}.`],
+  ],
+  'cut-list-calculator': [
+    ['What is a cut list?', 'A list of every piece a project needs, with its length (and width and thickness), so you can buy the right boards and cut them in the right order. Carpenters work it out before going to the lumber yard.'],
+    ['How much does a saw blade take off?', 'Each cut turns the width of the blade, its kerf, into sawdust. Most circular saw and table saw blades are ⅛ in (3 mm) wide; thin-kerf blades are about 3/32 in (2.4 mm), and a hand saw about 1/16 in (1.5 mm). On a long list of cuts it adds up.'],
+    ['Should I cut the longest pieces first?', 'Yes. Cut the longest pieces first, then fill the leftovers with shorter pieces. That is how the calculator lays out the boards, and it wastes the least wood.'],
+    ['How much extra lumber should I buy?', `About 10–15% for construction lumber, so you can skip knots, splits and warped ends, and 20–30% for hardwood. For sizing the joints themselves, use the ${a('wood-joint-calculator', 'Wood Joint Calculator')}.`],
   ],
   'square-footage-calculator': [
     ['How many square feet is a 12 × 12 room?', '12 × 12 = 144 sq ft.'],

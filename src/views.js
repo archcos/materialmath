@@ -11,7 +11,7 @@
   };
 
   // ---- Scene: faces for 3D, solids (extruded footprints) for the plan, plus plan-only marks.
-  function Scene() { this.faces = []; this.solids = []; this.marks = []; this.cut = Infinity; this.hasRoof = false; }
+  function Scene() { this.faces = []; this.solids = []; this.marks = []; this.dims = []; this.cut = Infinity; this.hasRoof = false; }
   const S = Scene.prototype;
   // A flat polygon. o: layer (drawn in layer order), two (visible from both sides), tag ('roof'), alpha, deco (line segments on it).
   S.face = function (pts, c, o = {}) {
@@ -40,6 +40,10 @@
   S.dim = function (a, b, text, side = 1) { this.marks.push({ k: 'dim', a, b, text, side, fl: this.mf }); };
   S.text = function (at, text, o = {}) { this.marks.push({ k: 'text', at, text, muted: !!o.muted, fl: this.mf }); };
   S.pline = function (pts, o = {}) { this.marks.push({ k: 'line', pts, dash: !!o.dash, glass: !!o.glass, fl: this.mf }); };
+  // 3D view marks, drawn over the model. dim3: a dimension from 3D point a to b, moved out by off (metres) with
+  // extension lines back to the part; the label sits on the far side. note3: a label at a 3D point.
+  S.dim3 = function (a, b, text, off = [0, 0, 0]) { this.dims.push({ a, b, text, off }); };
+  S.note3 = function (at, text) { this.dims.push({ a: at, text, off: [0, 0, 0] }); };
 
   // ---- Rendering helpers
   const VW = 400, VH = 300;
@@ -70,7 +74,8 @@
     if (!faces.length) return '';
     const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     // bounds of the whole scene, so hiding parts never changes the scale
-    for (const f of sc.faces) for (const p of f.pts) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], p[i]); hi[i] = Math.max(hi[i], p[i]); }
+    const dimPts = sc.dims.flatMap(d => [d.a, d.b].filter(Boolean).map(p => p.map((v, i) => v + d.off[i])));
+    for (const p of [...sc.faces.flatMap(f => f.pts), ...dimPts]) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], p[i]); hi[i] = Math.max(hi[i], p[i]); }
     const mid = lo.map((v, i) => (v + hi[i]) / 2), rad = Math.max(1e-3, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
     const k = ((Math.min(VW, VH) * 0.58) / rad) * (cam.zoom || 1); // sized by the bounding sphere, so turning never changes the scale
     const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), ce = Math.cos(cam.elev), se = Math.sin(cam.elev);
@@ -143,6 +148,20 @@
     for (const pc of out) for (const { f, p, k: kk } of pc.drawn.sort((a, b) => b.p.reduce((s, q) => s + q[2], 0) / b.p.length - a.p.reduce((s, q) => s + q[2], 0) / a.p.length)) {
       s += `<polygon points="${p.map(q => f1(q[0]) + ',' + f1(q[1])).join(' ')}" fill="${shade(f.c, kk)}"${f.alpha < 1 ? ` fill-opacity="${f.alpha}"` : ''} stroke="rgba(0,0,0,.32)" stroke-width=".6" stroke-linejoin="round"/>`;
       if (f.deco && f.deco.length) s += `<path d="${f.deco.map(([a, b]) => { const A = view(a), B = view(b); return `M${f1(A[0])} ${f1(A[1])}L${f1(B[0])} ${f1(B[1])}`; }).join('')}" stroke="rgba(0,0,0,.3)" stroke-width=".7" fill="none"/>`;
+    }
+    const ln = (p, q, c = '') => `<line${c} x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}"/>`;
+    for (const d of sc.dims) {
+      if (!d.b) { const P = view(d.a); s += `<g class="d3"><text x="${f1(P[0])}" y="${f1(P[1] + 4)}" text-anchor="middle">${esc(d.text)}</text></g>`; continue; }
+      const sh = p => view(p.map((v, i) => v + d.off[i])), A0 = view(d.a), B0 = view(d.b), A = sh(d.a), B = sh(d.b), len = Math.hypot(B[0] - A[0], B[1] - A[1]);
+      if (len < 0.5) continue; // seen end-on
+      const u = [(B[0] - A[0]) / len, (B[1] - A[1]) / len], os = [A[0] - A0[0], A[1] - A0[1]], ol = Math.hypot(os[0], os[1]);
+      const n = ol > 1 ? [os[0] / ol, os[1] / ol] : [-u[1], u[0]], t = [-u[1] * 4, u[0] * 4], out = (p, k) => [p[0] + n[0] * k, p[1] + n[1] * k];
+      let ang = (Math.atan2(u[1], u[0]) * 180) / Math.PI;
+      if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;
+      const [tx, ty] = out([(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], 9);
+      s += `<g class="d3">${ol > 1 ? ln(A0, out(A, 3), ' class="ext"') + ln(B0, out(B, 3), ' class="ext"') : ''}${ln(A, B)}`
+        + [A, B].map(p => ln([p[0] - t[0], p[1] - t[1]], [p[0] + t[0], p[1] + t[1]])).join('')
+        + `<text x="${f1(tx)}" y="${f1(ty + 4)}" text-anchor="middle" transform="rotate(${f1(ang)} ${f1(tx)} ${f1(ty)})">${esc(d.text)}</text></g>`;
     }
     return s;
   }
@@ -637,6 +656,144 @@
       if (!(n > 0 && v.T > 0 && v.W > 0 && v.L > 0)) return;
       for (let i = 0; i < n; i++) sc.box((i % 6) * (v.W + 0.01), 0, Math.floor(i / 6) * (v.T + 0.003), v.W, v.L, v.T, COL.wood);
       sc.dim([0, 0], [0, v.L], h.len(v.L), -1);
+    },
+    // A joint drawn from the calculator's own sizes, with the parts pulled apart so the cuts show.
+    'wood-joint-calculator': (v, sc, h) => {
+      const T = v.T, W = v.W, j = v.joint, c = h.cut || h.len;
+      if (!(T > 0 && W > 0 && W < 200 * T)) return;
+      const R = Object.fromEntries(root.MM.CALCS.find(x => x.slug === 'wood-joint-calculator').compute(v, h.sys || 'met')); // the same sizes the visitor sees
+      const L = Math.max(3 * W, 6 * T), H = Math.max(1.5 * W, 4 * T), cx = L / 2;
+      const outline = (xa, xb, ya, yb, z) => [[[xa, ya, z], [xb, ya, z]], [[xb, ya, z], [xb, yb, z]], [[xb, yb, z], [xa, yb, z]], [[xa, yb, z], [xa, ya, z]]];
+      if (j === 10) { // miter: the whole closed frame, each piece pulled out a little from the middle
+        const n = Math.min(Math.max(3, Math.round(v.sides) || 4), 12), t = Math.PI / n, ai = (2 * W) / Math.tan(t), g = W * 0.1;
+        for (let k = 0; k < n; k++) {
+          const th = 2 * t * k, at = (r, a) => [r * Math.cos(a) + g * Math.cos(th), r * Math.sin(a) + g * Math.sin(th)], ri = ai / Math.cos(t), ro = (ai + W) / Math.cos(t);
+          sc.prism([at(ri, th - t), at(ro, th - t), at(ro, th + t), at(ri, th + t)], 0, T, k % 2 ? COL.wood2 : COL.wood);
+        }
+        sc.dim([ai + g, -W], [ai + W + g, -W], c(W));
+        // sizes on the front piece: the outside (long point) and inside (short point) lengths, and the saw angle
+        const k = Math.round((3 * n) / 4) % n, th = 2 * t * k, e = [Math.cos(th), Math.sin(th)], ri = ai / Math.cos(t), ro = (ai + W) / Math.cos(t);
+        const P = (r, a) => [r * Math.cos(a) + g * e[0], r * Math.sin(a) + g * e[1], T];
+        sc.dim3(P(ro, th - t), P(ro, th + t), `long point ${c(2 * (ai + W) * Math.tan(t))}`, [e[0] * W * 0.5, e[1] * W * 0.5, 0]);
+        sc.dim3(P(ri, th - t), P(ri, th + t), `short point ${c(2 * ai * Math.tan(t))}`, [-e[0] * W * 0.6, -e[1] * W * 0.6, 0]);
+        sc.note3([0, 0, T], `saw at ${+(180 / n).toFixed(2)}° each end`);
+      } else if (j === 8 || j === 9) { // box joint or dovetail: a corner, with the upright board lifted off
+        const g = 1.2 * T;
+        sc.box(T, 0, 0, L - T, W, T, COL.wood);
+        sc.box(0, 0, T + g, T, W, H, COL.wood2);
+        if (j === 8) {
+          const n = Math.min(R['Fingers across the joint (both boards)'], 41), f = W / n;
+          for (let i = 0; i < n; i++) sc.box(0, i * f, i % 2 ? g : 0, T, f, T, i % 2 ? COL.wood2 : COL.wood);
+          sc.dim3([0, 0, T], [0, f, T], `${c(R['Finger width'])} fingers`, [-W * 0.3, 0, 0]);
+          sc.dim3([0, 0, 0], [T, 0, 0], `${c(T)} deep`, [0, -W * 0.3, 0]);
+        } else {
+          // tails on the flat board: wide at its end (x = 0), narrow at the baseline (x = T); pins fill the gaps, half pins at the edges
+          const n = Math.min(R.Tails, 20), s = W / n, o = T / 8, tw = Math.max(s - T / 4, 2 * o + 1e-4);
+          const pin = (a, b) => sc.prism([[0, a], [T, a ? a - o : 0], [T, b < W ? b + o : W], [0, b]], g, g + T, COL.wood2);
+          let prev = 0;
+          for (let i = 0; i < n; i++) {
+            const a = (i + 0.5) * s - tw / 2, b = a + tw;
+            sc.prism([[0, a], [T, a + o], [T, b - o], [0, b]], 0, T, COL.wood);
+            pin(prev, a);
+            prev = b;
+          }
+          pin(prev, W);
+          sc.dim3([0, 0, 0], [T, 0, 0], `baseline ${c(T)}`, [0, -W * 0.3, 0]);
+          if (n > 1) sc.dim3([0, s / 2, T], [0, 1.5 * s, T], `${c(s)} apart`, [-W * 0.3, 0, 0]);
+          sc.note3([0.62 * L, 0, T / 2], 'tails 1:8 hardwood · 1:6 softwood');
+        }
+        sc.dim([0, 0], [0, W], c(W), -1);
+        sc.dim3([L, 0, T], [L, W, T], c(W), [W * 0.25, 0, 0]);
+      } else if (j === 6) { // half-lap: two boards crossing, each notched half its thickness
+        const g = 1.5 * T, a = cx - W / 2, b = cx + W / 2, y0 = W / 2 - L / 2, y1 = W / 2 + L / 2;
+        sc.box(0, 0, 0, a, W, T, COL.wood); sc.box(a, 0, 0, W, W, T / 2, COL.wood); sc.box(b, 0, 0, L - b, W, T, COL.wood);
+        sc.box(a, y0, g, W, -y0, T, COL.wood2); sc.box(a, 0, g + T / 2, W, W, T / 2, COL.wood2); sc.box(a, W, g, W, y1 - W, T, COL.wood2);
+        sc.dim([a, y0], [b, y0], c(W));
+        sc.dim3([a, 0, 0], [b, 0, 0], `${c(W)} lap`, [0, 0, -W * 0.3]);
+        sc.dim3([b, 0, T / 2], [b, 0, T], `${c(T / 2)} deep`, [W * 0.35, 0, 0]);
+      } else if (j === 0 || j === 4 || j === 5) { // butt, dado, rabbet: a shelf standing on a flat board
+        const gx = j === 5 ? 0 : cx - T / 2, dd = j === 4 ? T / 3 : j === 5 ? T / 2 : 0, g = 1.2 * T;
+        if (gx > 0) sc.box(0, 0, 0, gx, W, T, COL.wood);
+        sc.box(gx, 0, 0, T, W, T - dd, COL.wood);
+        sc.box(gx + T, 0, 0, L - gx - T, W, T, COL.wood);
+        sc.box(gx, 0, T - dd + g, T, W, H, COL.wood2);
+        if (j === 0) { // screws up through the bottom board into the shelf's end
+          const n = R['Screws per joint'];
+          for (let i = 0; i < n; i++) sc.cyl(gx + T / 2, (W * (i + 0.5)) / n, T / 14, -g, -g + R['Screw length'], COL.steel, {}, 10);
+        }
+        sc.dim([gx + T, 0], [gx + T, W], c(W));
+        const top = T - dd + g + H;
+        sc.dim3([gx, 0, top], [gx + T, 0, top], c(T), [0, 0, W * 0.2]);
+        sc.dim3([gx + T, 0, top], [gx + T, W, top], c(W), [W * 0.2, 0, 0]);
+        if (dd) {
+          sc.dim3([gx, 0, T], [gx + T, 0, T], `${c(T)} wide`, [0, -W * 0.3, 0]);
+          sc.dim3([gx + T, 0, T - dd], [gx + T, 0, T], `${c(dd)} deep`, [W * 0.4, 0, 0]);
+        } else sc.note3([gx + T / 2, W / 2, -g - T], `${c(R['Screw length'])} screws`);
+      } else { // pocket screw, dowel, biscuit, mortise and tenon: a T joint, the bottom board on edge and the upright's end coming down onto it
+        const t = j === 7 ? R['Tenon length (⅔ of the board width)'] : j === 2 ? 2 * R['Dowel diameter'] : 0.012, g = t + W * 0.25, x0 = cx - W / 2;
+        const A = sc.box(0, 0, 0, L, T, W, COL.wood), B = sc.box(x0, 0, W + g, W, T, H, COL.wood2);
+        A.top.deco = [];
+        if (j === 7) {
+          const tt = R['Tenon thickness'], tw = R['Tenon width'];
+          sc.box(cx - tw / 2, (T - tt) / 2, W + g - t, tw, tt, t, COL.wood2);
+          A.top.deco = outline(cx - tw / 2, cx + tw / 2, (T - tt) / 2, (T + tt) / 2, W);
+          const ox = T / 3 + W * 0.3, md = R['Mortise depth'];
+          sc.dim3([cx + tw / 2, (T - tt) / 2, W + g - t], [cx + tw / 2, (T - tt) / 2, W + g], `${c(t)} long`, [ox, 0, 0]);
+          sc.note3([cx, (T - tt) / 2, W + g - t / 2], `tenon ${c(tt)} thick`);
+          sc.dim3([cx - tw / 2, 0, W - md], [cx - tw / 2, 0, W], `mortise ${c(md)}`, [-ox, 0, 0]);
+        } else if (j === 2) {
+          const d = R['Dowel diameter'], n = Math.min(R['Dowels per joint'], 40), sp = R['Dowel spacing (center to center)'];
+          for (let i = 0; i < n; i++) {
+            const x = x0 + T / 2 + i * sp;
+            sc.cyl(x, T / 2, d / 2, W + g - t, W + g, COL.floor, {}, 14);
+            for (let k = 0; k < 12; k++) { const p = a => [x + (d / 2) * Math.cos(a), T / 2 + (d / 2) * Math.sin(a), W]; A.top.deco.push([p((k * Math.PI) / 6), p(((k + 1) * Math.PI) / 6)]); }
+          }
+          if (n > 1) sc.dim3([x0 + T / 2, 0, W], [x0 + T / 2 + sp, 0, W], `${c(sp)} apart`, [0, 0, -W * 0.3]);
+          sc.note3([x0 + W * 1.35, 0, W + g - t / 2], `Ø ${c(d)} × ${c(R['Dowel length'])} dowels`);
+        } else if (j === 3) { // biscuits: #0 47 × 15 mm, #10 53 × 19 mm, #20 56 × 23 mm
+          const n = Math.min(R['Biscuits per joint'], 20), [bl, bw] = { 0: [0.047, 0.015], 10: [0.053, 0.019], 20: [0.056, 0.023] }[R['Biscuit size (#0, #10 or #20)']];
+          for (let i = 0; i < n; i++) {
+            const x = x0 + (W * (i + 0.5)) / n;
+            sc.box(x - bl / 2, T / 2 - 0.002, W + g - bw / 2, bl, 0.004, bw / 2, COL.floor);
+            A.top.deco.push(...outline(x - bl / 2 - 0.002, x + bl / 2 + 0.002, T / 2 - 0.002, T / 2 + 0.002, W));
+          }
+          sc.note3([x0 + W * 1.4, 0, W + g / 2], `#${R['Biscuit size (#0, #10 or #20)']} biscuit, slot ${c(T / 2)} from the face`);
+        } else { // pocket screw: the angled holes show as slots on the upright's face
+          const n = R['Screws per joint'], r = T / 4, z0 = W + g + 0.3 * T, z1 = z0 + 1.6 * T;
+          B.sides[0].deco = [];
+          for (let i = 0; i < n; i++) {
+            const x = x0 + (W * (i + 0.5)) / n;
+            B.sides[0].deco.push([[x - r, 0, z0], [x + r, 0, z0]], [[x + r, 0, z0], [x + r, 0, z1]], [[x + r, 0, z1], [x - r, 0, z1]], [[x - r, 0, z1], [x - r, 0, z0]]);
+          }
+          sc.note3([cx, 0, z1 + T], `${c(R['Pocket screw length'])} pocket screws`);
+        }
+        sc.dim([x0, 0], [x0 + W, 0], c(W));
+        const top = W + g + H;
+        sc.dim3([x0, 0, top], [x0 + W, 0, top], c(W), [0, 0, W * 0.2]);
+        sc.dim3([x0 + W, 0, top], [x0 + W, T, top], c(T), [W * 0.2, 0, 0]);
+      }
+    },
+    // Each board as it will be cut: pieces in two shades, the saw kerf as a gap, the trim and the offcut pale.
+    'cut-list-calculator': (v, sc, h) => {
+      if (!(v.SL > 0)) return;
+      const p = root.MM.cutPlan(v), bw = 3.5 * IN, th = 0.75 * IN, gap = Math.max(4 * IN, v.SL / 10), c = h.cut || h.len;
+      p.boards.slice(0, 12).forEach((b, i) => {
+        const y = i * (bw + gap);
+        let x = v.trim;
+        if (v.trim > 0) sc.box(0, y, 0, v.trim, bw, th, COL.board);
+        b.cuts.forEach((len, k) => {
+          sc.box(x, y, 0, len, bw, th, k % 2 ? COL.wood2 : COL.wood);
+          sc.text([x + len / 2, y + bw / 2], c(len));
+          sc.dim3([x, y, th], [x + len, y, th], c(len), [0, -gap * 0.4, 0]);
+          x += len + v.kerf;
+        });
+        if (b.left > 1e-4) { sc.box(v.SL - b.left, y, 0, b.left, bw, th, COL.board); sc.note3([v.SL - b.left / 2, y + bw / 2, th], 'offcut'); }
+      });
+      if (p.boards.length) {
+        sc.dim([0, 0], [v.SL, 0], h.len(v.SL));
+        const yb = (Math.min(p.boards.length, 12) - 1) * (bw + gap) + bw;
+        sc.dim3([0, yb, th], [v.SL, yb, th], `board ${h.len(v.SL)}`, [0, gap * 0.4, 0]);
+      }
     },
     'square-footage-calculator': (v, sc, h) => {
       const z = 0.05;

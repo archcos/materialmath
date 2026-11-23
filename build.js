@@ -54,6 +54,8 @@ const KEYWORDS = {
   'roofing-calculator': 'shingles squares bundles roof pitch',
   'stair-calculator': 'steps stairs risers treads stringer',
   'board-foot-calculator': 'lumber hardwood wood board feet',
+  'wood-joint-calculator': 'carpentry woodworking joinery mortise tenon dado rabbet rebate dovetail box finger joint half lap dowel biscuit pocket hole screw miter housing tools chisel router saw',
+  'cut-list-calculator': 'carpentry woodworking cuts cutting list optimizer lumber boards saw kerf crosscut rip miter bevel 2x4 how many boards',
   'square-footage-calculator': 'area sq ft room house measure',
 };
 

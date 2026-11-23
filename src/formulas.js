@@ -15,6 +15,7 @@
     liq: [['gal', GAL], ['L', 0.001]],
     ton: [['tons', 907.18474], ['tonnes', 1000]],
     wt: [['lb', 0.45359237], ['kg', 1]],
+    cut: [['in', IN], ['mm', 0.001]], // shop sizes for joints and cuts; calc-ui.js shows inches as 1/16 fractions
   };
 
   const CATS = {
@@ -80,6 +81,81 @@
 
   const run = (slug, v, sys) => CALCS.find(c => c.slug === slug).compute(v, sys);
   const pick = (rows, label) => rows.find(r => r[0] === label)[1];
+
+
+  // ---- Carpentry: wood joints and cut lists
+  // Inches to the nearest 1/16 as a shop fraction: 2.3125 -> "2 5/16".
+  const frac = inches => {
+    const n = Math.round(inches * 16), w = Math.floor(n / 16);
+    let a = n % 16, b = 16;
+    while (a && a % 2 === 0) { a /= 2; b /= 2; }
+    return a ? `${w ? w + ' ' : ''}${a}/${b}` : String(w);
+  };
+  const deg = r => (r * 180) / Math.PI;
+  // The nearest standard size (bit, chisel, dowel), in metres: from inch sizes or mm sizes. Ties go to the smaller.
+  const std = (x, m, ins, mms) => (m ? ins.map(i => i * IN) : mms.map(i => i / 1000)).reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) - 1e-9 ? b : a));
+  const glue = m => (m ? IN / 16 : 0.0015); // extra depth so glue and a little end grain don't stop the joint closing
+  // Joints: [menu label, first (headline) row label, rows(T thickness, W width, imperial?, all values)]. Rules of thumb from common shop practice.
+  const JOINTS = [
+    ['Butt joint (screws or nails)', 'Screw length', (T, W) => [['Screw length', (T * 5) / 3, 'cut'],
+      ['Screws per joint', W < 2 * IN ? 1 : Math.max(2, up(W / (4 * IN))), 'count'], ['Nail length (about 3× the board)', 3 * T, 'cut']]],
+    // Kreg's screw chart: up to 5/8 in stock 1 in screws, 3/4 in 1¼, 7/8–1⅛ in 1½, 1¼–1⅜ in 2, 1½ in 2½.
+    ['Pocket screw', 'Pocket screw length', (T, W, m) => {
+      const i = [0.625, 0.875, 1.125, 1.375].findIndex(t => T <= t * IN + 1e-9), k = i < 0 ? 4 : i;
+      return [['Pocket screw length', m ? [1, 1.25, 1.5, 2, 2.5][k] * IN : [25, 32, 38, 50, 64][k] / 1000, 'cut'],
+        ['Screws per joint', W < 2 * IN ? 1 : Math.max(2, up(W / (6 * IN))), 'count'], ['Jig and drill collar setting', T, 'cut']];
+    }],
+    ['Dowel', 'Dowel diameter', (T, W, m) => {
+      const d = std(T / 2, m, [0.25, 0.3125, 0.375, 0.5, 0.625, 0.75], [6, 8, 10, 12, 14, 16]), span = Math.max(0, W - T), n = Math.max(2, up(span / (3 * IN)) + 1);
+      return [['Dowel diameter', d, 'cut'], ['Dowels per joint', n, 'count'], ['Dowel length', 4 * d, 'cut'], ['Hole depth in each piece', 2 * d + glue(m), 'cut'],
+        ['First dowel from the edge', T / 2, 'cut'], ['Dowel spacing (center to center)', span / (n - 1), 'cut']];
+    }],
+    ['Biscuit (plate joiner)', 'Biscuit size (#0, #10 or #20)', (T, W) => [['Biscuit size (#0, #10 or #20)', T < 0.6 * IN ? 0 : T < 0.7 * IN ? 10 : 20, 'num'],
+      ['Biscuits per joint', Math.max(1, Math.floor((W - 2 * IN) / (6 * IN)) + 1), 'count'], ['Slot center from the face', T / 2, 'cut']]],
+    ['Dado (housing)', 'Dado width', T => [['Dado width', T, 'cut'], ['Dado depth (⅓ of the board)', T / 3, 'cut'], ['Wood left under the dado', (2 * T) / 3, 'cut']]],
+    ['Rabbet (rebate)', 'Rabbet width', T => [['Rabbet width', T, 'cut'], ['Rabbet depth (½ of the board)', T / 2, 'cut']]],
+    ['Half-lap', 'Cut depth (½ of the board)', (T, W, m) => [['Cut depth (½ of the board)', T / 2, 'cut'], ['Lap length (the other board\'s width)', W, 'cut'],
+      [`Saw kerfs to clear the waste (about every ${m ? '¼ in' : '6 mm'})`, up(W / (m ? IN / 4 : 0.006)) + 1, 'count']]],
+    // Tenon: a third of the board, sized to the nearest chisel; ⅓-thickness shoulders on the edges; ⅔ of the width long.
+    ['Mortise and tenon', 'Tenon thickness', (T, W, m) => {
+      const t = std(T / 3, m, [0.25, 0.3125, 0.375, 0.5, 0.625], [6, 8, 10, 12, 16]), len = (2 * W) / 3;
+      return [['Tenon thickness', t, 'cut'], ['Mortise chisel or bit', t, 'cut'], ['Cheek cut on each face', Math.max(0, (T - t) / 2), 'cut'],
+        ['Tenon width', Math.max(0, W - (2 * T) / 3), 'cut'], ['Tenon length (⅔ of the board width)', len, 'cut'], ['Mortise depth', len + glue(m), 'cut']];
+    }],
+    // An odd number of fingers puts a full finger at both edges of the first board.
+    ['Box (finger) joint', 'Finger width', (T, W, m) => {
+      const f = std(T / 2, m, [0.25, 0.375, 0.5, 0.75], [6, 8, 10, 12, 20]), n = Math.max(1, 2 * Math.round((W / f - 1) / 2) + 1);
+      return [['Finger width', f, 'cut'], ['Finger depth (the board thickness)', T, 'cut'], ['Fingers across the joint (both boards)', n, 'count'],
+        ['Board width for full fingers at both edges', n * f, 'cut']];
+    }],
+    ['Dovetail (through)', 'Tails', (T, W) => {
+      const n = Math.max(1, Math.round(W / (2.5 * T)));
+      return [['Tails', n, 'count'], ['Tail spacing (center to center)', W / n, 'cut'], ['Baseline (scribe line) from the end', T, 'cut'], ['Narrowest part of each pin', T / 4, 'cut'],
+        ['Angle for hardwood (1:8 slope, degrees)', deg(Math.atan(1 / 8)), 'num'], ['Angle for softwood (1:6 slope, degrees)', deg(Math.atan(1 / 6)), 'num']];
+    }],
+    // A closed frame of n equal sides: each end is cut 180/n degrees off square, and the outside edge is longer by 2 × W × tan(180°/n).
+    ['Miter', 'Saw angle (degrees from square)', (T, W, m, v) => {
+      const n = Math.max(3, Math.round(v.sides));
+      return [['Saw angle (degrees from square)', 180 / n, 'num'], ['Long point minus short point', 2 * W * Math.tan(Math.PI / n), 'cut'], ['Pieces', n, 'count']];
+    }],
+  ];
+  // Cut list: first-fit decreasing, longest pieces first, each into the first board with room. Each piece costs one kerf,
+  // except that the last piece on a board may end exactly at the board's end. The trim squares up the factory end.
+  // ponytail: first-fit decreasing is close to the best layout for a few dozen pieces, not always the true minimum.
+  function cutPlan(v) {
+    const room = v.SL - v.trim, pieces = [], boards = [];
+    let tooLong = 0;
+    for (const k of 'ABCD') for (let i = 0; i < Math.min(Math.round(v['n' + k]) || 0, 500); i++) if (v[k] > 0) { if (v[k] > room + 1e-9) tooLong++; else pieces.push(v[k]); }
+    pieces.sort((a, b) => b - a);
+    for (const p of pieces) {
+      let b = boards.find(x => x.used + p <= room + 1e-9);
+      if (!b) boards.push((b = { cuts: [], used: 0 }));
+      b.cuts.push(p);
+      b.used += p + v.kerf;
+    }
+    for (const b of boards) b.left = Math.max(0, room - b.used);
+    return { boards, tooLong };
+  }
 
   const CALCS = [
     {
@@ -576,6 +652,39 @@
       compute(v) { const V = v.T * v.W * v.L * v.N; return [['Board feet', V / (144 * IN ** 3), 'num'], ['Volume', V, 'cuft']]; },
     },
     {
+      slug: 'wood-joint-calculator', cat: 'build', title: 'Wood Joint Calculator',
+      desc: 'Size any common wood joint from your board thickness and width: mortise and tenon, dado, rabbet, half-lap, dowel, biscuit, pocket screw, box joint, dovetail and miter.',
+      inputs: [['joint', 'Joint', 'select', 7, JOINTS.map(([label], n) => [label, n])], ['T', 'Board thickness (actual)', 'small', 0.75], ['W', 'Board width (actual)', 'small', 3.5],
+        ['sides', 'Sides in the frame', 'count', 4]],
+      show: { sides: ['joint', [10]] },
+      head: JOINTS.map(j => j[1]),
+      compute(v, sys) { return JOINTS[v.joint][2](v.T, v.W, imp(sys), v); },
+    },
+    {
+      slug: 'cut-list-calculator', cat: 'build', title: 'Cut List Calculator',
+      desc: 'Plan your cuts: enter the pieces you need and the board length, and get how many boards to buy and where to cut each one, with the saw kerf and waste allowed for.',
+      inputs: [['SL', 'Board length you will buy', 'len', 8], ['kerf', 'Saw blade kerf', 'small', 0.125], ['trim', 'End trim per board', 'small', 0.5],
+        ['A', 'Piece 1 length', 'small', 46], ['nA', 'Piece 1 quantity', 'count', 2], ['B', 'Piece 2 length', 'small', 30], ['nB', 'Piece 2 quantity', 'count', 4],
+        ['C', 'Piece 3 length', 'small', 32], ['nC', 'Piece 3 quantity', 'count', 1], ['D', 'Piece 4 length', 'small', 28.5], ['nD', 'Piece 4 quantity', 'count', 1],
+        ['waste', 'Extra for knots and defects', 'pct', 10]],
+      presets: [
+        ['Bookshelf', { SL: 8, A: 46, nA: 2, B: 30, nB: 4, C: 32, nC: 1, D: 28.5, nD: 1 }],
+        ['Workbench legs and rails', { SL: 8, A: 34, nA: 4, B: 48, nB: 2, C: 24, nC: 2, D: 0, nD: 0 }],
+        ['Raised garden bed 4 × 8', { SL: 8, A: 96, nA: 4, B: 46.5, nB: 4, C: 12, nC: 4, D: 0, nD: 0 }],
+        ['Picture frame 8 × 10', { SL: 2, A: 12, nA: 2, B: 14, nB: 2, C: 0, nC: 0, D: 0, nD: 0 }],
+      ],
+      compute(v, sys) {
+        const p = cutPlan(v), m = imp(sys), L = x => (m ? frac(x / IN) + ' in' : Math.round(x * 1000) + ' mm');
+        const total = p.boards.reduce((s, b) => s + b.cuts.reduce((t, c) => t + c, 0), 0), cuts = p.boards.reduce((s, b) => s + b.cuts.length, 0);
+        const left = p.boards.reduce((s, b) => s + b.left, 0);
+        return [['Boards to buy', up(p.boards.length * (1 + v.waste)), 'count'], ['Boards the cuts fit on', p.boards.length, 'count'], ['Pieces to cut', cuts, 'count'],
+          ['Total length of the pieces', total, 'len'], ['Lost to saw kerf', cuts * v.kerf, 'cut'], ['Offcuts left over', left, 'len'],
+          ['Lumber used (%)', p.boards.length ? (100 * total) / (p.boards.length * v.SL) : 0, 'num'],
+          ...(p.tooLong ? [['Pieces longer than the board (not counted)', p.tooLong, 'count']] : []),
+          ...p.boards.slice(0, 12).map((b, i) => [`Board ${i + 1}: ${b.cuts.map(L).join(' + ')} · offcut`, b.left, 'cut'])];
+      },
+    },
+    {
       slug: 'square-footage-calculator', cat: 'build', title: 'Square Footage Calculator',
       desc: 'Find the area of a room, L-shaped space, circle or triangle in square feet, square yards and square metres.',
       inputs: [['shape', 'Shape', 'select', 0, [['Rectangle', 0], ['L-shape or two rooms', 1], ['Circle', 2], ['Triangle', 3]]],
@@ -633,6 +742,8 @@
     'roofing-calculator': { pitch: 'Inches of rise per 12 in of run. Most houses are 4/12 to 8/12.' },
     'stair-calculator': { rise: 'Measure from finished floor to finished floor.', max: 'US residential code limit: 7¾ in (19.7 cm).' },
     'board-foot-calculator': { T: 'Use the nominal size: a 2×6 counts as 2 in, 8/4 hardwood as 2 in.' },
+    'wood-joint-calculator': { T: 'Use the real size: a 1×4 is ¾ × 3½ in (19 × 89 mm).' },
+    'cut-list-calculator': { kerf: 'Most saw blades: ⅛ in (3 mm).', nD: 'Leave a quantity at 0 for a row you do not need.' },
   };
   // Default prices for the cost estimate, keyed by result row label: [imperial price, metric price, optional "per" text].
   // Rough typical US big-box prices; visitors edit them. Only rows listed here are priced; calcs without an entry show no estimate.
@@ -695,6 +806,7 @@
     'framing-calculator': { 'Studs': [4.5, 4.5], 'Plate boards': [9, 9] },
     'siding-calculator': { 'Siding to buy': [2.5, 27] },
     'board-foot-calculator': { 'Board feet': [6, 6, 'per board foot'] },
+    'cut-list-calculator': { 'Boards to buy': [8, 8] },
   };
   // Quick tips shown when hovering or tapping the "?" next to each input. "_" applies to every calculator unless overridden.
   const bulkTips = {
@@ -893,9 +1005,26 @@
       windows: 'Each window is taken out as 15 sq ft.',
       waste: 'Extra for cuts and overlaps. Use 15% for many corners or gables.',
     },
+    'wood-joint-calculator': {
+      joint: 'Pick the joint you will cut. The guide below the calculator says what each one is good for and which tools cut it.',
+      T: 'Measure the real thickness with a tape or calipers. A "1-by" board is ¾ in (19 mm), a 2-by is 1½ in (38 mm), and plywood is often a little under its label.',
+      W: 'The real width of the board that gets the joint, across its face. A 1×4 is 3½ in (89 mm) wide.',
+      sides: 'How many pieces make the closed frame: 4 for a picture frame or box, 6 for a hexagon, 8 for an octagon.',
+    },
+    'cut-list-calculator': {
+      SL: 'The length of the boards at the store, such as 8, 10 or 12 ft (2.4, 3.0 or 3.6 m). All pieces are cut from boards of the same width and thickness.',
+      kerf: 'The width of wood the saw blade turns to dust on each cut. Most circular saw and table saw blades: ⅛ in (3 mm). Thin-kerf blades: 3/32 in (2.4 mm).',
+      trim: 'Factory ends are often split, dented or out of square, so most carpenters cut a little off first. Enter 0 to use the full length.',
+      A: 'The finished length of the longest pieces. Measure twice and write it on your cut list.',
+      nA: 'How many pieces of this length. Enter 0 for a row you do not need.',
+      B: 'The next piece length.', nB: 'How many pieces of this length.',
+      C: 'Another piece length. Enter 0 if you do not need it.', nC: 'How many pieces of this length.',
+      D: 'Another piece length. Enter 0 if you do not need it.', nD: 'How many pieces of this length.',
+      waste: 'Extra boards for knots, splits, warping and mistakes. 10–15% for construction lumber, 20–30% for hardwood.',
+    },
   };
   for (const c of CALCS) { c.hints = HINTS[c.slug]; c.prices = PRICES[c.slug]; c.tips = { ...TIPS._, ...TIPS[c.slug] }; }
 
-  root.MM = { CALCS, CATS, UNITS };
+  root.MM = { CALCS, CATS, UNITS, frac, cutPlan };
   if (typeof module === 'object') module.exports = root.MM;
 })(typeof window !== 'undefined' ? window : globalThis);

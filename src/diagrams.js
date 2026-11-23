@@ -198,6 +198,17 @@ const DIAGRAMS = {
     for (const v of [0.3, 0.65]) s += line('grain', 50 + v * 40, 110 - v * 34, 260 + v * 40, 110 - v * 34);
     return s + dim(50, 152, 260, 152, 'Length', 155, 170) + dim(36, 110, 36, 136, 'Thickness', 30, 123, -90) + dim(272, 141, 312, 107, 'Width', 300, 142);
   },
+  // Mortise and tenon, pulled apart: the rail's tenon (middle third of its thickness) and the mortise in the stile's edge.
+  'wood-joint-calculator': () => box('wood', 40, 40, 40, 140, 24, 16)
+    + poly('post', [[88, 96], [96, 91], [96, 119], [88, 124]])
+    + box('wood2', 140, 95, 130, 40, 24, 16) + box('wood2', 108, 99, 40, 28, 8, 5)
+    + label(124, 90, 'Tenon') + label(108, 148, 'Mortise')
+    + dim(306, 79, 306, 119, 'Width', 316, 99, -90) + dim(270, 87, 294, 71, 'Thickness', 270, 66),
+  // A board cut into pieces: each cut takes a saw kerf, and what is left is the offcut.
+  'cut-list-calculator': () => box('wood', 20, 95, 98, 26, 24, 16) + box('wood2', 122, 95, 88, 26, 24, 16) + box('board', 214, 95, 76, 26, 24, 16)
+    + label(69, 112, 'Piece 1') + label(166, 112, 'Piece 2') + label(252, 112, 'Offcut')
+    + `<g class="dim">${line('', 120, 52, 120, 90)}${label(120, 46, 'Saw kerf')}</g>`
+    + dim(20, 139, 290, 139, 'Board length', 155, 157) + dim(20, 170, 118, 170, 'Piece length', 69, 188),
   'square-footage-calculator': () => {
     let s = rect('floor', 50, 25, 200, 125);
     for (let x = 75; x < 250; x += 25) s += line('grid', x, 25, x, 150);

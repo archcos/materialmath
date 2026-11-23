@@ -53,7 +53,7 @@
     <div class="cur"><label for="cur-in">Currency</label><div class="cur-box">
       <input id="cur-in" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="cur-opts" autocomplete="off" spellcheck="false" placeholder="Search: peso, yen, GBP…">
       <ul id="cur-opts" class="cur-opts" role="listbox" aria-label="Currencies" hidden></ul></div></div></div>
-    <table class="costs"></table>
+    <div class="cost-list"><table class="costs"></table></div>
     <p class="total" aria-live="polite"></p>
     <p class="help cost-help"></p></div>` : ''}
     <div class="actions"><button type="button" class="btn add" data-tip="Saves this calculation to your project, so several jobs (like a slab, its gravel base and a fence) add up to one shopping list and total.">+ Add to project</button><button type="button" class="copy" data-tip="Copies your measurements, results${C.prices ? ' and cost estimate' : ''} as text, ready to paste into a text message, email or notes.">Copy results</button>${

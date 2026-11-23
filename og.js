@@ -23,20 +23,19 @@ const css = fs.readFileSync(path.join(__dirname, 'src', 'style.css'), 'utf8');
 const logo = fs.readFileSync(path.join(__dirname, 'src', 'favicon.svg'), 'utf8');
 
 const card = (title, sub, art) => `<!doctype html><html data-theme="dark"><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap">
 <style>${css}
 html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
-body { background: var(--steel-2); color: var(--on-steel); font-family: var(--head); }
-.stripe { height: 16px; background: repeating-linear-gradient(-45deg, var(--hazard) 0 22px, #16181a 22px 44px); }
-.row { display: flex; align-items: center; gap: 40px; height: 566px; padding: 0 60px; }
+body { background: var(--print); background-image: linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px); background-size: 30px 30px; color: var(--on-steel); font-family: var(--head); }
+.row { display: flex; align-items: center; gap: 40px; height: 630px; padding: 0 60px; }
 .text { flex: 1; }
-.brand { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 700; text-transform: uppercase; }
-.brand svg { width: 48px; height: 48px; } .brand b { color: var(--hot); }
-h1 { font-size: ${title.length > 26 ? 62 : 76}px; line-height: 1.02; margin: 34px 0 18px; text-transform: uppercase; }
-p { margin: 0; font-size: 30px; color: var(--hazard); text-transform: uppercase; letter-spacing: .05em; }
+.brand { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 700; }
+.brand svg { width: 48px; height: 48px; } .brand b { color: var(--hazard); }
+h1 { font-size: ${title.length > 26 ? 62 : 76}px; line-height: 1.02; margin: 34px 0 18px; }
+p { margin: 0; font-size: 30px; color: var(--hazard); letter-spacing: .05em; }
 .art { flex: none; width: 500px; background: var(--thumb); border-radius: 10px; padding: 20px; }
 .dg .lbl { font-size: 13px; }
-</style></head><body><div class="stripe"></div><div class="row"><div class="text">
+</style></head><body><div class="row"><div class="text">
 <div class="brand">${logo}<span>Material<b>Math</b></span></div><h1>${title}</h1><p>${sub}</p></div>
 ${art ? `<div class="art">${art}</div>` : ''}</div></body></html>`;
 
